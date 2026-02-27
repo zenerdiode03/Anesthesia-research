@@ -94,11 +94,10 @@ function ymd(d: Date) {
 
 async function ncbiGET(url: string) {
   try {
-    const res = await fetch(url, { 
-      cache: "no-store",
-      headers: {
-        'Accept': 'application/xml, application/json, text/plain, */*'
-      }
+    // Use a server-side proxy to avoid CORS issues
+    const proxyUrl = `/api/pubmed?url=${encodeURIComponent(url)}`;
+    const res = await fetch(proxyUrl, { 
+      cache: "no-store"
     });
     
     if (res.status === 429) {
