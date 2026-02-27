@@ -1,6 +1,5 @@
 import express from 'express';
 import { createServer as createViteServer } from 'vite';
-import fetch from 'node-fetch';
 
 async function startServer() {
   const app = express();

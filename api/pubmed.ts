@@ -1,5 +1,4 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import fetch from 'node-fetch';
 
 export default async function handler(
   req: VercelRequest,
@@ -11,12 +10,18 @@ export default async function handler(
       return res.status(400).send('Missing url parameter');
     }
 
+    console.log(`Proxying request to PubMed: ${targetUrl}`);
+
     const response = await fetch(targetUrl, {
       headers: {
         'User-Agent': 'AnesthesiaResearchHub/1.0.0'
       }
     });
     
+    if (!response.ok) {
+        console.error(`PubMed API error: ${response.status} ${response.statusText}`);
+    }
+
     const data = await response.text();
     res.status(response.status).send(data);
   } catch (error) {

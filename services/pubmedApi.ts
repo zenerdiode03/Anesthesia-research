@@ -28,11 +28,11 @@ export const PUBMED_JOURNALS: JournalSpec[] = [
 ];
 
 export function buildJournalQuery(specificJournalLabel?: string) {
-  if (specificJournalLabel) {
+  if (specificJournalLabel && specificJournalLabel !== 'All') {
     const found = PUBMED_JOURNALS.find(j => j.label === specificJournalLabel);
-    if (found) return `(${found.ta}[ta])`;
+    if (found) return `("${found.ta}"[Journal])`;
   }
-  const joined = PUBMED_JOURNALS.map((j) => `${j.ta}[ta]`).join(" OR ");
+  const joined = PUBMED_JOURNALS.map((j) => `"${j.ta}"[Journal]`).join(" OR ");
   return `(${joined})`;
 }
 
@@ -117,14 +117,17 @@ async function ncbiGET(url: string) {
   }
 }
 
-export async function esearchPMIDsByEDAT(journal?: string, days = 14, retmax = 10, customRange?: { start: Date, end: Date }) {
+export async function esearchPMIDsByEDAT(journal?: string, days = 30, retmax = 20, customRange?: { start: Date, end: Date }) {
   const end = customRange?.end || new Date();
   const start = customRange?.start || new Date();
   if (!customRange) {
     start.setDate(end.getDate() - days);
   }
   
-  const term = `${buildJournalQuery(journal)} AND ("${ymd(start)}"[edat] : "${ymd(end)}"[edat])`;
+  // Use [dp] (Date of Publication) for more reliable results across journals
+  const term = `${buildJournalQuery(journal)} AND ("${ymd(start)}"[dp] : "${ymd(end)}"[dp])`;
+
+  console.log(`PubMed Search Term: ${term}`);
 
   const params = new URLSearchParams({
     db: "pubmed",
