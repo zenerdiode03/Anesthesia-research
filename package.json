@@ -1,0 +1,31 @@
+{
+  "name": "anesthesia-research-hub",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "lint": "tsc --noEmit",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@google/genai": "^1.40.0",
+    "@tailwindcss/vite": "^4.2.1",
+    "fast-xml-parser": "^4.3.2",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-markdown": "^10.1.0",
+    "recharts": "^2.15.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^4.2.1",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.5"
+  }
+}
