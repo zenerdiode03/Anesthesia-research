@@ -3,7 +3,19 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { Paper, JournalName } from "../types";
 import { esearchPMIDsByEDAT, efetchArticles } from "./pubmedApi";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+// Lazy initialization to prevent crash if API key is missing at load time
+let aiInstance: GoogleGenAI | null = null;
+
+function getAI() {
+  if (!aiInstance) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error("GEMINI_API_KEY is not configured. Please set it in your environment variables.");
+    }
+    aiInstance = new GoogleGenAI({ apiKey });
+  }
+  return aiInstance;
+}
 
 /**
  * Maps PubMed journal strings to our internal JournalName type.
@@ -50,6 +62,7 @@ ${rawArticles.map((a, i) => `${i+1}. PMID: ${a.pmid}\nTitle: ${a.title}\nJournal
 
 Return your analysis as a JSON array of objects with keys: pmid, category, clinicalImpact, summary, keywords.`;
 
+    const ai = getAI();
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: prompt,
@@ -125,6 +138,7 @@ Structure the response with high-impact professional formatting:
 3. BEDSIDE APPLICATION: Exactly how should this change (or not change) current practice?
 4. TAKE-HOME MESSAGE: The single most important takeaway.`;
 
+    const ai = getAI();
     const response = await ai.models.generateContent({
         model: 'gemini-3-pro-preview',
         contents: prompt,
@@ -167,6 +181,7 @@ ${journalPapers.map(p => `- 📄 [${p.title}](${p.url}) (PMID: ${p.id})`).join('
 
 출력은 마크다운 형식을 사용하고, 전문적이고 신뢰감 있는 어조를 유지하세요.`;
 
+    const ai = getAI();
     const response = await ai.models.generateContent({
         model: 'gemini-3-pro-preview',
         contents: prompt,
