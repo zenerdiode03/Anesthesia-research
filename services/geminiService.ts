@@ -8,9 +8,11 @@ let aiInstance: GoogleGenAI | null = null;
 
 function getAI() {
   if (!aiInstance) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      throw new Error("GEMINI_API_KEY is not configured. Please set it in your environment variables.");
+    // Try process.env first (injected by Vite define), then fallback to import.meta.env
+    const apiKey = process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY;
+    
+    if (!apiKey || apiKey === 'undefined' || apiKey === 'null') {
+      throw new Error("GEMINI_API_KEY is not configured. Please set it in your Vercel Environment Variables.");
     }
     aiInstance = new GoogleGenAI({ apiKey });
   }
