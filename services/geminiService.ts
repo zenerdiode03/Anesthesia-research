@@ -120,7 +120,7 @@ Return your analysis as a JSON array of objects with keys: pmid, category, clini
     });
   } catch (error) {
     console.error("Failed to process research feed:", error);
-    return [];
+    throw error; // Throw error to be handled by UI
   }
 }
 

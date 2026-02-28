@@ -1,15 +1,7 @@
 
 import { XMLParser } from "fast-xml-parser";
 
-const getApiKey = () => {
-  try {
-    return (process.env as any).NCBI_API_KEY || null;
-  } catch (e) {
-    return null;
-  }
-};
-
-const NCBI_API_KEY = getApiKey();
+const NCBI_API_KEY = null; // Handled by server-side proxy
 
 export type JournalSpec = { label: string; ta: string };
 
@@ -136,8 +128,6 @@ export async function esearchPMIDsByEDAT(journal?: string, days = 30, retmax = 2
     sort: "pub+date",
     term,
   });
-  if (NCBI_API_KEY) params.set("api_key", NCBI_API_KEY);
-
   const url = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?${params.toString()}`;
   const txt = await ncbiGET(url);
   const json = JSON.parse(txt);
@@ -170,8 +160,6 @@ export async function efetchArticles(pmids: string[]) {
     retmode: "xml",
     id: pmids.join(","),
   });
-  if (NCBI_API_KEY) params.set("api_key", NCBI_API_KEY);
-
   const url = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?${params.toString()}`;
   const xml = await ncbiGET(url);
   const obj = parser.parse(xml);

@@ -15,7 +15,12 @@ async function startServer() {
 
       console.log(`Proxying request to: ${targetUrl}`);
       
-      const response = await fetch(targetUrl, {
+      const url = new URL(targetUrl);
+      if (process.env.NCBI_API_KEY) {
+        url.searchParams.set('api_key', process.env.NCBI_API_KEY);
+      }
+
+      const response = await fetch(url.toString(), {
         headers: {
           'User-Agent': 'AnesthesiaResearchHub/1.0.0'
         }
