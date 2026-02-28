@@ -42,19 +42,20 @@ function mapJournalToType(jt: string, ja: string): JournalName {
 }
 
 export async function fetchLatestResearch(journal?: JournalName, customRange?: { start: Date, end: Date }): Promise<Paper[]> {
-  const cacheKey = `research_cache_${journal || 'all'}_${customRange ? 'custom' : 'default'}`;
+  const rangeSuffix = customRange 
+    ? `${customRange.start.toISOString().split('T')[0]}_${customRange.end.toISOString().split('T')[0]}`
+    : 'default';
+  const cacheKey = `research_cache_${journal || 'all'}_${rangeSuffix}`;
   const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
   try {
     // 0. Check Cache
-    if (!customRange) {
-      const cached = localStorage.getItem(cacheKey);
-      if (cached) {
-        const { timestamp, data } = JSON.parse(cached);
-        if (Date.now() - timestamp < CACHE_DURATION) {
-          console.log(`Using cached data for ${journal || 'all'}`);
-          return data;
-        }
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      const { timestamp, data } = JSON.parse(cached);
+      if (Date.now() - timestamp < CACHE_DURATION) {
+        console.log(`Using cached data for ${journal || 'all'} (${rangeSuffix})`);
+        return data;
       }
     }
 
@@ -145,12 +146,10 @@ Return your analysis as a JSON array of objects with keys: pmid, category, clini
     });
 
     // 5. Save to Cache
-    if (!customRange) {
-      localStorage.setItem(cacheKey, JSON.stringify({
-        timestamp: Date.now(),
-        data: processedArticles
-      }));
-    }
+    localStorage.setItem(cacheKey, JSON.stringify({
+      timestamp: Date.now(),
+      data: processedArticles
+    }));
 
     return processedArticles;
   } catch (error) {
@@ -191,55 +190,4 @@ Structure the response with high-impact professional formatting:
     }
 
     return response.text || "Summary generation failed. Please try again.";
-}
-
-export async function generateWeeklyReport(papers: Paper[], startDate: Date, endDate: Date): Promise<string> {
-    if (papers.length === 0) return "지난 한 주간 발표된 주요 논문이 없습니다.";
-
-    const journalGroups = papers.reduce((acc, paper) => {
-        if (!acc[paper.journal]) acc[paper.journal] = [];
-        acc[paper.journal].push(paper);
-        return acc;
-    }, {} as Record<string, Paper[]>);
-
-    const prompt = `Act as a senior medical editor for an anesthesiology research briefing.
-I have a list of research articles published between ${startDate.toLocaleDateString()} and ${endDate.toLocaleDateString()}.
-Please provide a "Weekly Research Briefing" in Korean.
-
-Structure & Formatting Rules:
-1. 주간 개요 (Weekly Overview): 이번 주 연구 동향에 대한 짧은 요약 (2-3문장).
-2. 저널별 주요 연구 (Key Research by Journal): 
-   - 각 저널명은 반드시 "### **저널명**" 형식으로 작성하세요. (이 형식은 파란색으로 표시됩니다).
-   - 저널 섹션 사이에는 반드시 빈 줄을 추가하여 가독성을 높이세요.
-   - 각 연구는 반드시 한 줄에 하나씩만 작성하세요.
-   - 형식: 📄 [연구 제목](URL) (PMID: 번호)
-   - 별도의 상세 설명이나 요약 없이 목록 형태로만 작성하여 간결함을 유지하세요.
-3. 임상적 시사점 (Clinical Implications): 이번 주 연구들이 전체적으로 마취과 임상 현장에 주는 메시지.
-
-데이터:
-${Object.entries(journalGroups).map(([journal, journalPapers]) => `
-[${journal}]
-${journalPapers.map(p => `- 📄 [${p.title}](${p.url}) (PMID: ${p.id})`).join('\n')}
-`).join('\n')}
-
-출력은 마크다운 형식을 사용하고, 전문적이고 신뢰감 있는 어조를 유지하세요.`;
-
-    const ai = getAI();
-    let response;
-    try {
-        response = await ai.models.generateContent({
-            model: 'gemini-3-pro-preview',
-            contents: prompt,
-            config: {
-                thinkingConfig: { thinkingBudget: 4000 }
-            }
-        });
-    } catch (err: any) {
-        if (err.message?.includes('fetch') || err.name === 'TypeError') {
-            throw new Error("Google AI 서비스에 연결할 수 없습니다. (Failed to fetch Gemini API)");
-        }
-        throw err;
-    }
-
-    return response.text || "리포트 생성에 실패했습니다.";
 }

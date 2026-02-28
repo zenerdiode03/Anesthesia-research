@@ -35,17 +35,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </div>
       </header>
 
-      <div className="bg-amber-50 border-b border-amber-100 py-2">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-center space-x-2">
-          <svg className="w-4 h-4 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-          </svg>
-          <span className="text-[11px] font-bold text-amber-800">
-            본 서비스는 AI(Gemini)를 통한 논문 요약 기능을 제공합니다. 실제 임상 적용 전 반드시 원문을 확인하십시오.
-          </span>
-        </div>
-      </div>
-
       <main className="flex-grow max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
         {children}
       </main>
@@ -60,20 +49,20 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <h3 className="text-white font-black tracking-tight">마취사냥꾼 (Anesthesia Hunter)</h3>
             </div>
             <p className="text-sm leading-relaxed max-w-sm">
-              전 세계 마취과 전문의들이 최신 의학 지식을 더 빠르고 효율적으로 사냥하듯 습득할 수 있도록 돕는 AI 기반 학술 큐레이션 서비스입니다.
+              대한민국 마취통증의학 연구자들이 최신 의학 지식을 더 빠르고 효율적으로 사냥하듯 습득할 수 있도록 돕는 AI 기반 학술 큐레이션 서비스입니다.
             </p>
           </div>
           
           <div className="text-right flex flex-col justify-end space-y-4">
             <div className="space-x-6 text-sm font-bold">
-              <a href="#" className="hover:text-white transition-colors">이용약관</a>
-              <a href="#" className="hover:text-white transition-colors">개인정보처리방침</a>
               <a href="#" className="hover:text-white transition-colors">원천 데이터(NCBI)</a>
             </div>
-            <p className="text-xs">
-              © {new Date().getFullYear()} 마취사냥꾼. All rights reserved. <br/>
-              본 서비스는 의료 진단이나 처방을 목적으로 하지 않습니다.
-            </p>
+            <div className="text-xs space-y-1">
+              <p>© {new Date().getFullYear()} 마취사냥꾼. All rights reserved.</p>
+              <p className="text-slate-500">
+                Developer: 서울대학교병원 마취통증의학과 이호진 (hjpainfree@snu.ac.kr)
+              </p>
+            </div>
           </div>
         </div>
       </footer>
