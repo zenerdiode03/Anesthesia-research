@@ -31,9 +31,6 @@ const PaperCard: React.FC<PaperCardProps> = ({ paper }) => {
             <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${paper.category === 'Review' ? 'bg-purple-100 text-purple-700' : 'bg-emerald-100 text-emerald-700'}`}>
               {getCategoryLabel(paper.category)}
             </span>
-            <div className="flex items-center bg-blue-50 px-2 py-1 rounded border border-blue-100">
-                <span className="text-[9px] font-black text-blue-700 uppercase tracking-tighter">PubMed</span>
-            </div>
           </div>
           <span className="text-[11px] text-slate-400 font-medium">
             {paper.date}
