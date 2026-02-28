@@ -26,14 +26,16 @@ async function startServer() {
       const response = await fetch(url.toString(), {
         headers: {
           'User-Agent': 'AnesthesiaResearchHub/1.0.0'
-        }
+        },
+        signal: AbortSignal.timeout(10000) // 10 second timeout
       });
       
       const data = await response.text();
       res.status(response.status).send(data);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Proxy error:', error);
-      res.status(500).send('Error proxying request to PubMed');
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      res.status(500).send(`Error proxying request to PubMed: ${message}`);
     }
   });
 

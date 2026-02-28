@@ -84,29 +84,49 @@ function ymd(d: Date) {
   return `${y}/${m}/${da}`;
 }
 
-async function ncbiGET(url: string) {
-  try {
-    // Use a server-side proxy to avoid CORS issues
-    const proxyUrl = `/api/pubmed?url=${encodeURIComponent(url)}`;
-    const res = await fetch(proxyUrl, { 
-      cache: "no-store"
-    });
-    
-    if (res.status === 429) {
-      throw new Error("PubMed rate limit exceeded. Please wait a moment and try again.");
+async function ncbiGET(url: string, retries = 2, delay = 1000) {
+  for (let i = 0; i <= retries; i++) {
+    try {
+      // Use a server-side proxy to avoid CORS issues
+      const proxyUrl = `/api/pubmed?url=${encodeURIComponent(url)}`;
+      const res = await fetch(proxyUrl, { 
+        cache: "no-store"
+      });
+      
+      if (res.status === 429) {
+        if (i < retries) {
+          console.log(`Rate limited. Retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          delay *= 2;
+          continue;
+        }
+        throw new Error("PubMed rate limit exceeded. Please wait a moment and try again.");
+      }
+      
+      if (!res.ok) {
+        const errorText = await res.text().catch(() => "");
+        if (res.status >= 500 && i < retries) {
+          console.log(`Server error ${res.status}. Retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          delay *= 2;
+          continue;
+        }
+        throw new Error(`NCBI request failed (${res.status}): ${res.statusText}. ${errorText}`);
+      }
+      return await res.text();
+    } catch (error: any) {
+      if (i === retries) {
+        if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
+          throw new Error("PubMed 데이터 서버(/api/pubmed)에 연결할 수 없습니다. 서버가 실행 중인지 또는 네트워크 상태를 확인해 주세요. (Failed to fetch PubMed Proxy)");
+        }
+        throw error;
+      }
+      console.log(`Fetch error. Retrying in ${delay}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      delay *= 2;
     }
-    
-    if (!res.ok) {
-      const errorText = await res.text().catch(() => "");
-      throw new Error(`NCBI request failed (${res.status}): ${res.statusText}. ${errorText}`);
-    }
-    return res.text();
-  } catch (error: any) {
-    if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
-      throw new Error("PubMed 데이터 서버(/api/pubmed)에 연결할 수 없습니다. 서버가 실행 중인지 또는 네트워크 상태를 확인해 주세요. (Failed to fetch PubMed Proxy)");
-    }
-    throw error;
   }
+  throw new Error("Maximum retries reached for NCBI request.");
 }
 
 export async function esearchPMIDsByEDAT(journal?: string, days = 30, retmax = 20, customRange?: { start: Date, end: Date }) {
