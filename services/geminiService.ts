@@ -42,7 +42,22 @@ function mapJournalToType(jt: string, ja: string): JournalName {
 }
 
 export async function fetchLatestResearch(journal?: JournalName, customRange?: { start: Date, end: Date }): Promise<Paper[]> {
+  const cacheKey = `research_cache_${journal || 'all'}_${customRange ? 'custom' : 'default'}`;
+  const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+
   try {
+    // 0. Check Cache
+    if (!customRange) {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const { timestamp, data } = JSON.parse(cached);
+        if (Date.now() - timestamp < CACHE_DURATION) {
+          console.log(`Using cached data for ${journal || 'all'}`);
+          return data;
+        }
+      }
+    }
+
     // 1. Get real PMIDs from PubMed
     const pmids = await esearchPMIDsByEDAT(journal, 14, 15, customRange);
     if (pmids.length === 0) return [];
@@ -105,7 +120,7 @@ Return your analysis as a JSON array of objects with keys: pmid, category, clini
     const enrichments: any[] = JSON.parse(text);
 
     // 4. Merge real data with AI enrichments
-    return rawArticles.map((raw) => {
+    const processedArticles = rawArticles.map((raw) => {
       const enrichment = enrichments.find(e => e.pmid === raw.pmid) || { 
         category: 'Original Article', 
         clinicalImpact: 'Clinical analysis pending.', 
@@ -128,6 +143,16 @@ Return your analysis as a JSON array of objects with keys: pmid, category, clini
         tags: raw.tags
       };
     });
+
+    // 5. Save to Cache
+    if (!customRange) {
+      localStorage.setItem(cacheKey, JSON.stringify({
+        timestamp: Date.now(),
+        data: processedArticles
+      }));
+    }
+
+    return processedArticles;
   } catch (error) {
     console.error("Failed to process research feed:", error);
     throw error; // Throw error to be handled by UI

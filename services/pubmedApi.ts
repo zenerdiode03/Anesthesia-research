@@ -117,7 +117,8 @@ export async function esearchPMIDsByEDAT(journal?: string, days = 30, retmax = 2
   }
   
   // Use [dp] (Date of Publication) for more reliable results across journals
-  const term = `${buildJournalQuery(journal)} AND ("${ymd(start)}"[dp] : "${ymd(end)}"[dp])`;
+  // Exclude Letters to focus on original research and reviews
+  const term = `${buildJournalQuery(journal)} AND ("${ymd(start)}"[dp] : "${ymd(end)}"[dp]) NOT "Letter"[pt]`;
 
   console.log(`PubMed Search Term: ${term}`);
 
