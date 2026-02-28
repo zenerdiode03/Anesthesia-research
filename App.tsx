@@ -289,6 +289,7 @@ const App: React.FC = () => {
                     <thead>
                       <tr className="border-b border-slate-100">
                         <th className="py-4 px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Journal</th>
+                        <th className="py-4 px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Date</th>
                         <th className="py-4 px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Title</th>
                         <th className="py-4 px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Category</th>
                       </tr>
@@ -302,6 +303,11 @@ const App: React.FC = () => {
                               style={{ backgroundColor: JOURNALS[paper.journal]?.color || '#64748b' }}
                             >
                               {JOURNALS[paper.journal]?.shortName || paper.journal}
+                            </span>
+                          </td>
+                          <td className="py-6 px-4">
+                            <span className="text-[11px] font-bold text-slate-500 whitespace-nowrap">
+                              {paper.date}
                             </span>
                           </td>
                           <td className="py-6 px-4">
@@ -326,7 +332,7 @@ const App: React.FC = () => {
                       ))}
                       {weeklyPapers.length === 0 && !isWeeklyLoading && (
                         <tr>
-                          <td colSpan={3} className="py-20 text-center text-slate-400 font-medium">
+                          <td colSpan={4} className="py-20 text-center text-slate-400 font-medium">
                             지난 한 주간 발표된 연구가 없습니다.
                           </td>
                         </tr>
