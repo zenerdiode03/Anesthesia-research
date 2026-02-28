@@ -4,6 +4,9 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
+  if (typeof fetch === 'undefined') {
+    return res.status(500).send('Server environment error: fetch is not defined. Please ensure Node.js 18+ is used.');
+  }
   try {
     const targetUrl = req.query.url as string;
     if (!targetUrl) {

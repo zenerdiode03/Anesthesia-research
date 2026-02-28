@@ -103,7 +103,7 @@ async function ncbiGET(url: string) {
     return res.text();
   } catch (error: any) {
     if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
-      throw new Error("Network error or CORS issue while accessing PubMed. Please check your internet connection or try a different browser.");
+      throw new Error("PubMed 데이터 서버(/api/pubmed)에 연결할 수 없습니다. 서버가 실행 중인지 또는 네트워크 상태를 확인해 주세요. (Failed to fetch PubMed Proxy)");
     }
     throw error;
   }

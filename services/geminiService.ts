@@ -9,10 +9,10 @@ let aiInstance: GoogleGenAI | null = null;
 function getAI() {
   if (!aiInstance) {
     // Try process.env first (injected by Vite define), then fallback to import.meta.env
-    const apiKey = process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY;
+    const apiKey = (process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY)?.trim();
     
-    if (!apiKey || apiKey === 'undefined' || apiKey === 'null') {
-      throw new Error("GEMINI_API_KEY is not configured. Please set it in your Vercel Environment Variables.");
+    if (!apiKey || apiKey === 'undefined' || apiKey === 'null' || apiKey.length < 10) {
+      throw new Error("GEMINI_API_KEY is not configured or invalid. Please set a valid key in Vercel Environment Variables.");
     }
     aiInstance = new GoogleGenAI({ apiKey });
   }
@@ -65,30 +65,38 @@ ${rawArticles.map((a, i) => `${i+1}. PMID: ${a.pmid}\nTitle: ${a.title}\nJournal
 Return your analysis as a JSON array of objects with keys: pmid, category, clinicalImpact, summary, keywords.`;
 
     const ai = getAI();
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              pmid: { type: Type.STRING },
-              category: { type: Type.STRING },
-              clinicalImpact: { type: Type.STRING },
-              summary: { type: Type.STRING },
-              keywords: { 
-                type: Type.ARRAY,
-                items: { type: Type.STRING }
+    let response;
+    try {
+      response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                pmid: { type: Type.STRING },
+                category: { type: Type.STRING },
+                clinicalImpact: { type: Type.STRING },
+                summary: { type: Type.STRING },
+                keywords: { 
+                  type: Type.ARRAY,
+                  items: { type: Type.STRING }
+                },
               },
-            },
-            required: ["pmid", "category", "clinicalImpact", "summary", "keywords"]
+              required: ["pmid", "category", "clinicalImpact", "summary", "keywords"]
+            }
           }
         }
+      });
+    } catch (err: any) {
+      if (err.message?.includes('fetch') || err.name === 'TypeError') {
+        throw new Error("Google AI 서비스에 연결할 수 없습니다. 네트워크 방화벽이나 VPN 설정을 확인해 주세요. (Failed to fetch Gemini API)");
       }
-    });
+      throw err;
+    }
 
     const text = response.text;
     if (!text) {
@@ -141,13 +149,21 @@ Structure the response with high-impact professional formatting:
 4. TAKE-HOME MESSAGE: The single most important takeaway.`;
 
     const ai = getAI();
-    const response = await ai.models.generateContent({
-        model: 'gemini-3-pro-preview',
-        contents: prompt,
-        config: {
-            thinkingConfig: { thinkingBudget: 4000 }
+    let response;
+    try {
+        response = await ai.models.generateContent({
+            model: 'gemini-3-pro-preview',
+            contents: prompt,
+            config: {
+                thinkingConfig: { thinkingBudget: 4000 }
+            }
+        });
+    } catch (err: any) {
+        if (err.message?.includes('fetch') || err.name === 'TypeError') {
+            throw new Error("Google AI 서비스에 연결할 수 없습니다. (Failed to fetch Gemini API)");
         }
-    });
+        throw err;
+    }
 
     return response.text || "Summary generation failed. Please try again.";
 }
@@ -184,13 +200,21 @@ ${journalPapers.map(p => `- 📄 [${p.title}](${p.url}) (PMID: ${p.id})`).join('
 출력은 마크다운 형식을 사용하고, 전문적이고 신뢰감 있는 어조를 유지하세요.`;
 
     const ai = getAI();
-    const response = await ai.models.generateContent({
-        model: 'gemini-3-pro-preview',
-        contents: prompt,
-        config: {
-            thinkingConfig: { thinkingBudget: 4000 }
+    let response;
+    try {
+        response = await ai.models.generateContent({
+            model: 'gemini-3-pro-preview',
+            contents: prompt,
+            config: {
+                thinkingConfig: { thinkingBudget: 4000 }
+            }
+        });
+    } catch (err: any) {
+        if (err.message?.includes('fetch') || err.name === 'TypeError') {
+            throw new Error("Google AI 서비스에 연결할 수 없습니다. (Failed to fetch Gemini API)");
         }
-    });
+        throw err;
+    }
 
     return response.text || "리포트 생성에 실패했습니다.";
 }

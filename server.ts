@@ -7,6 +7,9 @@ async function startServer() {
 
   // PubMed Proxy Route
   app.get('/api/pubmed', async (req, res) => {
+    if (typeof fetch === 'undefined') {
+      return res.status(500).send('Server environment error: fetch is not defined. Please ensure Node.js 18+ is used.');
+    }
     try {
       const targetUrl = req.query.url as string;
       if (!targetUrl) {
