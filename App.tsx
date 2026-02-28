@@ -123,7 +123,18 @@ const App: React.FC = () => {
         <>
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
             <div className="flex flex-col space-y-1">
-              <h3 className="text-2xl font-black text-slate-900 tracking-tight">실시간 연구 피드</h3>
+              <div className="flex items-center space-x-2">
+                <h3 className="text-2xl font-black text-slate-900 tracking-tight">실시간 연구 피드</h3>
+                <div className="group relative">
+                  <svg className="w-4 h-4 text-slate-300 cursor-help hover:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-64 p-3 bg-slate-800 text-white text-[11px] rounded-xl shadow-xl z-50 leading-relaxed">
+                    <p className="font-bold text-blue-400 mb-1">업데이트 안내</p>
+                    최근 14일간 주요 저널에 등재된 신규 논문을 보여줍니다. 데이터는 24시간마다 자동으로 갱신되어 최신 상태를 유지합니다.
+                  </div>
+                </div>
+              </div>
               <p className="text-slate-500 text-sm font-medium">주요 저널에 최근 등재된 논문 목록입니다.</p>
             </div>
             
@@ -228,13 +239,18 @@ const App: React.FC = () => {
       ) : (
         <div className="max-w-6xl mx-auto space-y-12 animate-in fade-in slide-in-from-bottom-6 duration-1000">
           <div className="bg-white rounded-[3rem] border border-slate-200 shadow-xl overflow-hidden">
-            <div className="bg-slate-900 px-8 py-12 md:px-16 text-white text-center">
+            <div className="bg-slate-900 px-8 py-12 md:px-16 text-white text-center relative">
               <h3 className="text-3xl font-black mb-4">주간 출간 리스트</h3>
               <p className="text-slate-400 font-medium">
                 {weekRange.start.toLocaleDateString()} ~ {weekRange.end.toLocaleDateString()}
               </p>
-              <div className="mt-6 inline-flex items-center px-4 py-2 bg-blue-600/20 border border-blue-500/30 rounded-full text-blue-400 text-xs font-black uppercase tracking-widest">
-                Last 7 Days Research
+              <div className="mt-6 flex flex-col items-center space-y-3">
+                <div className="inline-flex items-center px-4 py-2 bg-blue-600/20 border border-blue-500/30 rounded-full text-blue-400 text-xs font-black uppercase tracking-widest">
+                  Last 7 Days Research
+                </div>
+                <p className="text-[10px] text-slate-500 font-bold">
+                  * 매주 월요일에 지난 한 주(월-일)의 전체 리스트가 확정되어 업데이트됩니다.
+                </p>
               </div>
             </div>
             
