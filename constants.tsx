@@ -56,6 +56,31 @@ export const JOURNALS: Record<JournalName, JournalInfo> = {
     name: 'Pain',
     shortName: 'Pain',
     color: '#f97316'
+  },
+  'Anaesthesia Critical Care and Pain Medicine': {
+    name: 'Anaesthesia Critical Care and Pain Medicine',
+    shortName: 'ACCPM',
+    color: '#0369a1'
+  },
+  'BJA Education': {
+    name: 'BJA Education',
+    shortName: 'BJA Educ',
+    color: '#1d4ed8'
+  },
+  'Journal of Neurosurgical Anesthesiology': {
+    name: 'Journal of Neurosurgical Anesthesiology',
+    shortName: 'JNA',
+    color: '#7c3aed'
+  },
+  'Journal of Cardiothoracic and Vascular Anesthesia': {
+    name: 'Journal of Cardiothoracic and Vascular Anesthesia',
+    shortName: 'JCVA',
+    color: '#0e7490'
+  },
+  'Paediatric Anaesthesia': {
+    name: 'Paediatric Anaesthesia',
+    shortName: 'Paediatr Anaesth',
+    color: '#be185d'
   }
 };
 

@@ -11,7 +11,6 @@ const App: React.FC = () => {
   const [papers, setPapers] = useState<Paper[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedJournal, setSelectedJournal] = useState<JournalName | 'All'>('All');
   
   const [viewMode, setViewMode] = useState<'live' | 'weeklyList'>('live');
   const [weeklyPapers, setWeeklyPapers] = useState<Paper[]>([]);
@@ -70,12 +69,6 @@ const App: React.FC = () => {
     }
   }, [viewMode, loadPapers]);
 
-  const handleJournalFilter = (journal: JournalName | 'All') => {
-    if (selectedJournal === journal) return;
-    setSelectedJournal(journal);
-    loadPapers(journal === 'All' ? undefined : journal);
-  };
-
   const weekRange = getLastWeekRange();
 
   return (
@@ -92,7 +85,8 @@ const App: React.FC = () => {
           </div>
           <h2 className="text-4xl md:text-6xl font-black text-white leading-[1.1] tracking-tight mb-6">
             마취통증의학의 <br/>
-            최신 연구를 <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-300">사냥</span>하세요
+            최신 연구 트렌드를 <br/>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-300">사냥하세요</span>
           </h2>
           <p className="text-lg text-slate-400 font-medium leading-relaxed max-w-2xl">
             수많은 논문의 홍수 속에서 마취통증의학 연구자에게 꼭 필요한 핵심 정보만 골라냅니다. 
@@ -121,7 +115,7 @@ const App: React.FC = () => {
 
       {viewMode === 'live' ? (
         <>
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
+          <div className="flex flex-col gap-8 mb-12">
             <div className="flex flex-col space-y-1">
               <div className="flex items-center space-x-2">
                 <h3 className="text-2xl font-black text-slate-900 tracking-tight">실시간 연구 피드</h3>
@@ -131,38 +125,28 @@ const App: React.FC = () => {
                   </svg>
                   <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-64 p-3 bg-slate-800 text-white text-[11px] rounded-xl shadow-xl z-50 leading-relaxed">
                     <p className="font-bold text-blue-400 mb-1">업데이트 안내</p>
-                    최근 14일간 주요 저널에 등재된 신규 논문을 보여줍니다. 데이터는 24시간마다 자동으로 갱신되어 최신 상태를 유지합니다.
+                    최근 7일간 주요 저널에 등재된 신규 논문 30개를 보여줍니다. 데이터는 24시간마다 자동으로 갱신되어 최신 상태를 유지합니다.
                   </div>
                 </div>
               </div>
-              <p className="text-slate-500 text-sm font-medium">주요 저널에 최근 등재된 논문 목록입니다.</p>
+              <p className="text-slate-500 text-sm font-medium">마취통증의학 주요 저널의 최신 연구 성과를 실시간으로 확인하세요.</p>
             </div>
             
-            <div className="flex items-center space-x-2 bg-white p-1.5 rounded-2xl border border-slate-200 shadow-sm overflow-x-auto custom-scrollbar no-scrollbar-firefox">
-              <button
-                onClick={() => handleJournalFilter('All')}
-                className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all whitespace-nowrap ${
-                  selectedJournal === 'All' 
-                    ? 'bg-slate-900 text-white shadow-lg' 
-                    : 'text-slate-500 hover:bg-slate-50'
-                }`}
-              >
-                모든 저널
-              </button>
-              {(Object.keys(JOURNALS) as JournalName[]).map((name) => (
-                <button
-                  key={name}
-                  onClick={() => handleJournalFilter(name)}
-                  className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all whitespace-nowrap ${
-                    selectedJournal === name 
-                      ? 'text-white shadow-lg' 
-                      : 'text-slate-500 hover:bg-slate-50'
-                  }`}
-                  style={selectedJournal === name ? { backgroundColor: JOURNALS[name].color } : {}}
-                >
-                  {JOURNALS[name].shortName}
-                </button>
-              ))}
+            <div className="bg-slate-50/50 border border-slate-100 rounded-[2rem] p-6">
+              <div className="flex items-center space-x-2 mb-4">
+                <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">모니터링 중인 저널 목록</h4>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {(Object.keys(JOURNALS) as JournalName[]).map((name) => (
+                  <span
+                    key={name}
+                    className="px-3 py-1.5 bg-white border border-slate-100 rounded-lg text-[10px] font-bold text-slate-600 shadow-sm"
+                  >
+                    {JOURNALS[name].shortName}
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -186,7 +170,7 @@ const App: React.FC = () => {
                 </div>
               </div>
               <button 
-                onClick={() => viewMode === 'live' ? loadPapers(selectedJournal === 'All' ? undefined : selectedJournal) : loadWeeklyList()}
+                onClick={() => viewMode === 'live' ? loadPapers() : loadWeeklyList()}
                 className="px-6 py-2 bg-red-600 text-white text-[10px] font-black rounded-xl hover:bg-red-700 transition-all uppercase tracking-widest"
               >
                 Retry
@@ -224,12 +208,12 @@ const App: React.FC = () => {
                       </svg>
                   </div>
                   <p className="text-slate-900 font-black text-2xl">검색된 연구가 없습니다.</p>
-                  <p className="text-slate-400 text-sm mt-2 font-medium">최근 14일간 해당 저널에 등재된 신규 논문이 없습니다.</p>
+                  <p className="text-slate-400 text-sm mt-2 font-medium">최근 7일간 등재된 신규 논문이 없습니다.</p>
                   <button 
-                    onClick={() => handleJournalFilter('All')}
+                    onClick={() => loadPapers()}
                     className="mt-10 px-10 py-4 bg-slate-900 text-white rounded-2xl font-black hover:bg-blue-600 transition-all shadow-xl shadow-slate-200"
                   >
-                    모든 소스 확인하기
+                    새로고침
                   </button>
                 </div>
               )}

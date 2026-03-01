@@ -1,7 +1,7 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
 import { Paper, JournalName } from "../types";
-import { esearchPMIDsByEDAT, efetchArticles } from "./pubmedApi";
+import { esearchPMIDsByEDAT, efetchArticles, normalizeJournalName } from "./pubmedApi";
 
 // Lazy initialization to prevent crash if API key is missing at load time
 let aiInstance: GoogleGenAI | null = null;
@@ -22,30 +22,11 @@ function getAI() {
 /**
  * Maps PubMed journal strings to our internal JournalName type.
  */
-function mapJournalToType(jt: string, ja: string): JournalName {
-  jt = jt.toLowerCase();
-  ja = ja.toLowerCase();
-
-  if (ja === 'br j anaesth' || jt.includes('british journal')) return 'British Journal of Anaesthesia';
-  if (ja === 'anesth analg' || jt.includes('anesthesia and analgesia') || jt.includes('anesthesia & analgesia')) return 'Anesthesia & Analgesia';
-  if (ja === 'eur j anaesthesiol' || jt.includes('european journal')) return 'European Journal of Anaesthesiology';
-  if (ja === 'reg anesth pain med' || jt.includes('regional anesthesia')) return 'Regional Anesthesia & Pain Medicine';
-  if (ja === 'anaesthesia' || jt === 'anaesthesia') return 'Anaesthesia';
-  if (ja === 'can j anaesth' || jt.includes('canadian journal')) return 'Canadian Journal of Anesthesia';
-  if (ja === 'j clin anesth' || jt.includes('clinical anesthesia')) return 'Journal of Clinical Anesthesia';
-  if (ja === 'korean j anesthesiol' || jt.includes('korean journal')) return 'Korean Journal of Anesthesiology';
-  if (ja === 'j anesth' || jt.includes('journal of anesthesia')) return 'Journal of Anesthesia';
-  if (ja === 'pain' || jt === 'pain') return 'Pain';
-  if (ja === 'anesthesiology' || jt === 'anesthesiology') return 'Anesthesiology';
-  
-  return 'Anesthesiology'; // Default fallback
-}
-
 export async function fetchLatestResearch(journal?: JournalName, customRange?: { start: Date, end: Date }): Promise<Paper[]> {
   const rangeSuffix = customRange 
     ? `${customRange.start.toISOString().split('T')[0]}_${customRange.end.toISOString().split('T')[0]}`
     : 'default';
-  const cacheKey = `research_cache_${journal || 'all'}_${rangeSuffix}`;
+  const cacheKey = `research_cache_v6_${journal || 'all'}_${rangeSuffix}`;
   const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
   try {
@@ -60,7 +41,7 @@ export async function fetchLatestResearch(journal?: JournalName, customRange?: {
     }
 
     // 1. Get real PMIDs from PubMed
-    const pmids = await esearchPMIDsByEDAT(journal, 14, 15, customRange);
+    const pmids = await esearchPMIDsByEDAT(journal, 7, 30, customRange);
     if (pmids.length === 0) return [];
 
     // 2. Fetch real article metadata (Title, Authors, Abstract)
@@ -133,7 +114,7 @@ Return your analysis as a JSON array of objects with keys: pmid, category, clini
         id: raw.pmid,
         title: raw.title,
         authors: raw.authors,
-        journal: mapJournalToType(raw.journal, raw.journalAbbrev),
+        journal: normalizeJournalName(raw.journalAbbrev || raw.journal),
         date: raw.date,
         url: raw.url,
         abstract: raw.abstract || undefined,

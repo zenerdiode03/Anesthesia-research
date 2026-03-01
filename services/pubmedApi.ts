@@ -1,5 +1,6 @@
 
 import { XMLParser } from "fast-xml-parser";
+import { JournalName } from "../types";
 
 const NCBI_API_KEY = null; // Handled by server-side proxy
 
@@ -17,6 +18,11 @@ export const PUBMED_JOURNALS: JournalSpec[] = [
   { label: "Korean Journal of Anesthesiology", ta: "Korean J Anesthesiol" },
   { label: "Journal of Anesthesia", ta: "J Anesth" },
   { label: "Pain", ta: "Pain" },
+  { label: "Anaesthesia Critical Care and Pain Medicine", ta: "Anaesth Crit Care Pain Med" },
+  { label: "BJA Education", ta: "BJA Educ" },
+  { label: "Journal of Neurosurgical Anesthesiology", ta: "J Neurosurg Anesthesiol" },
+  { label: "Journal of Cardiothoracic and Vascular Anesthesia", ta: "J Cardiothorac Vasc Anesth" },
+  { label: "Paediatric Anaesthesia", ta: "Paediatr Anaesth" },
 ];
 
 export function buildJournalQuery(specificJournalLabel?: string) {
@@ -173,6 +179,14 @@ function ensureArray<T>(x: any): T[] {
   return Array.isArray(x) ? x : [x];
 }
 
+export function normalizeJournalName(name: string): JournalName {
+  const found = PUBMED_JOURNALS.find(j => 
+    j.label.toLowerCase() === name.toLowerCase() || 
+    j.ta.toLowerCase() === name.toLowerCase()
+  );
+  return (found ? found.label : name) as JournalName;
+}
+
 export async function efetchArticles(pmids: string[]) {
   if (pmids.length === 0) return [];
   
@@ -215,7 +229,7 @@ export async function efetchArticles(pmids: string[]) {
       pmid,
       title,
       abstract: abstractText || null,
-      journal: journalTitle,
+      journal: normalizeJournalName(journalAbbrev || journalTitle),
       journalAbbrev: journalAbbrev,
       authors,
       date: dateStr,

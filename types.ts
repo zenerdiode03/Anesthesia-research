@@ -26,7 +26,12 @@ export type JournalName =
   | 'Journal of Clinical Anesthesia'
   | 'Korean Journal of Anesthesiology'
   | 'Journal of Anesthesia'
-  | 'Pain';
+  | 'Pain'
+  | 'Anaesthesia Critical Care and Pain Medicine'
+  | 'BJA Education'
+  | 'Journal of Neurosurgical Anesthesiology'
+  | 'Journal of Cardiothoracic and Vascular Anesthesia'
+  | 'Paediatric Anaesthesia';
 
 export interface JournalInfo {
   name: JournalName;
