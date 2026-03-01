@@ -13,6 +13,10 @@ async function startServer() {
   const PORT = 3000;
 
   // Middleware
+  app.use((req, res, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    next();
+  });
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
@@ -43,6 +47,10 @@ async function startServer() {
   });
 
   // Podcast APIs
+  app.get('/api/health', (req, res) => {
+    res.json({ status: 'ok', uptime: process.uptime() });
+  });
+
   app.get('/api/podcasts', (req, res) => {
     try {
       const data = fs.readFileSync(PODCASTS_JSON, 'utf8');
@@ -52,25 +60,34 @@ async function startServer() {
     }
   });
 
-  app.post('/api/podcasts/upload', upload.single('audio'), (req, res) => {
+  app.post('/api/podcasts/upload', (req, res, next) => {
+    console.log(`[UPLOAD] Starting upload request: ${req.method} ${req.url}`);
+    next();
+  }, upload.single('audio'), (req, res) => {
     const { password, title, description } = req.body;
     const adminPassword = process.env.ADMIN_PASSWORD || 'hunter123';
 
-    console.log(`Upload attempt received for: ${title}`);
+    console.log(`[UPLOAD] Attempt received for: ${title}`);
+    console.log(`[UPLOAD] File info:`, req.file ? {
+      originalname: req.file.originalname,
+      mimetype: req.file.mimetype,
+      size: req.file.size,
+      path: req.file.path
+    } : 'No file');
 
     if (password !== adminPassword) {
-      console.warn('Upload failed: Invalid password');
+      console.warn('[UPLOAD] Failed: Invalid password');
       if (req.file) fs.unlinkSync(req.file.path);
       return res.status(401).send('Invalid password');
     }
 
     if (!req.file) {
-      console.warn('Upload failed: No file provided');
+      console.warn('[UPLOAD] Failed: No file provided');
       return res.status(400).send('No audio file uploaded');
     }
 
     try {
-      console.log(`File saved at: ${req.file.path}`);
+      console.log(`[UPLOAD] File saved at: ${req.file.path}`);
       const podcasts = JSON.parse(fs.readFileSync(PODCASTS_JSON, 'utf8'));
       const newPodcast = {
         id: Date.now().toString(),
@@ -81,10 +98,10 @@ async function startServer() {
       };
       podcasts.unshift(newPodcast);
       fs.writeFileSync(PODCASTS_JSON, JSON.stringify(podcasts, null, 2));
-      console.log('Podcast metadata updated successfully');
+      console.log('[UPLOAD] Podcast metadata updated successfully');
       res.json(newPodcast);
     } catch (err) {
-      console.error('Error saving podcast data:', err);
+      console.error('[UPLOAD] Error saving podcast data:', err);
       res.status(500).send('Error saving podcast data');
     }
   });
