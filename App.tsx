@@ -172,11 +172,6 @@ const App: React.FC = () => {
                 <p className="text-red-700 text-sm font-medium mt-1">{error}</p>
                 <div className="mt-2 text-[10px] text-red-500 font-mono opacity-50 flex flex-col space-y-1">
                   <div>{new Date().toLocaleTimeString()} | {window.location.hostname}</div>
-                  {error.includes('API key') && (
-                    <div className="bg-red-100/50 p-1 rounded">
-                      Detected Key: {process.env.GEMINI_API_KEY ? `${process.env.GEMINI_API_KEY.slice(0, 4)}...${process.env.GEMINI_API_KEY.slice(-4)}` : 'Not Found'}
-                    </div>
-                  )}
                 </div>
               </div>
               <button 
@@ -258,11 +253,6 @@ const App: React.FC = () => {
                     <p className="text-red-700 text-sm font-medium mt-1">{error}</p>
                     <div className="mt-2 text-[10px] text-red-500 font-mono opacity-50 flex flex-col space-y-1">
                       <div>{new Date().toLocaleTimeString()} | {window.location.hostname}</div>
-                      {error.includes('API key') && (
-                        <div className="bg-red-100/50 p-1 rounded">
-                          Detected Key: {process.env.GEMINI_API_KEY ? `${process.env.GEMINI_API_KEY.slice(0, 4)}...${process.env.GEMINI_API_KEY.slice(-4)}` : 'Not Found'}
-                        </div>
-                      )}
                     </div>
                   </div>
                   <button 

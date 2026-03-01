@@ -23,6 +23,21 @@ function getAI() {
  * Maps PubMed journal strings to our internal JournalName type.
  */
 export async function fetchLatestResearch(journal?: JournalName, customRange?: { start: Date, end: Date }): Promise<Paper[]> {
+  // If it's the default request (no specific journal, no custom range), use the server-side daily cache
+  if (!journal && !customRange) {
+    try {
+      const response = await fetch('/api/research/latest');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Server error: ${response.statusText}`);
+      }
+      return await response.json();
+    } catch (error: any) {
+      console.error("Failed to fetch daily research from server:", error);
+      // Fallback to client-side if server fails
+    }
+  }
+
   const rangeSuffix = customRange 
     ? `${customRange.start.toISOString().split('T')[0]}_${customRange.end.toISOString().split('T')[0]}`
     : 'default';

@@ -3,6 +3,7 @@ import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import { fetchAndProcessResearch } from './server-research';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -32,12 +33,13 @@ async function startServer() {
   const serverCache: Record<string, { data: string, timestamp: number }> = {};
   const SERVER_CACHE_DURATION = 60 * 60 * 1000; // 1 hour server-side cache
 
+  // Daily Research Cache
+  let dailyResearchCache: any[] | null = null;
+  let lastCacheDate: string | null = null;
+  let isFetching = false;
+
   // PubMed Proxy Route
   app.get('/api/pubmed', async (req, res) => {
-    if (typeof fetch === 'undefined') {
-      return res.status(500).send('Server environment error: fetch is not defined. Please ensure Node.js 18+ is used.');
-    }
-
     const targetUrl = req.query.url as string;
     if (!targetUrl) {
       return res.status(400).send('Missing url parameter');
@@ -80,6 +82,46 @@ async function startServer() {
       console.error('Proxy error:', error);
       const message = error instanceof Error ? error.message : 'Unknown error';
       res.status(500).send(`Error proxying request to PubMed: ${message}`);
+    }
+  });
+
+  // Daily Research API
+  app.get('/api/research/latest', async (req, res) => {
+    const today = new Date().toISOString().split('T')[0];
+    
+    // If we have a cache for today, return it
+    if (dailyResearchCache && lastCacheDate === today) {
+      console.log(`[${new Date().toISOString()}] Serving DAILY CACHE for ${today}`);
+      return res.json(dailyResearchCache);
+    }
+
+    // If already fetching, wait or return error (to prevent multiple simultaneous Gemini calls)
+    if (isFetching) {
+      return res.status(503).json({ error: "Data is being extracted by another user. Please try again in a moment." });
+    }
+
+    try {
+      isFetching = true;
+      console.log(`[${new Date().toISOString()}] Cache expired or missing for ${today}. Starting extraction...`);
+      
+      const apiKey = process.env.GEMINI_API_KEY;
+      
+      if (!apiKey) {
+        throw new Error("GEMINI_API_KEY is not configured on the server.");
+      }
+
+      const data = await fetchAndProcessResearch(apiKey);
+      
+      dailyResearchCache = data;
+      lastCacheDate = today;
+      
+      console.log(`[${new Date().toISOString()}] Extraction complete and cached for ${today}`);
+      res.json(data);
+    } catch (error: any) {
+      console.error('Daily extraction error:', error);
+      res.status(500).json({ error: error.message || "Failed to extract daily research" });
+    } finally {
+      isFetching = false;
     }
   });
 
