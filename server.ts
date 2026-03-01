@@ -3,8 +3,6 @@ import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import { fetchLatestResearch, fetchGuidelines, generateDeepSummary } from './services/geminiService';
-import { JournalName } from './types';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -29,109 +27,12 @@ async function startServer() {
     res.json({ status: 'ok', uptime: process.uptime() });
   });
 
-  // Simple in-memory cache for PubMed and Gemini requests
-  // Key: Cache Key, Value: { data: any, timestamp: number }
-  const serverCache: Record<string, { data: any, timestamp: number }> = {};
-  const PUBMED_CACHE_DURATION = 60 * 60 * 1000; // 1 hour for raw PubMed
-  const ENRICHED_CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours for enriched data
-  const GUIDELINE_CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; // 1 week for guidelines
+  // Simple in-memory cache for PubMed requests
+  // Key: URL, Value: { data: string, timestamp: number }
+  const serverCache: Record<string, { data: string, timestamp: number }> = {};
+  const SERVER_CACHE_DURATION = 60 * 60 * 1000; // 1 hour server-side cache
 
-  // Research API (Enriched)
-  app.get('/api/research', async (req, res) => {
-    const journal = req.query.journal as JournalName;
-    const startStr = req.query.start as string;
-    const endStr = req.query.end as string;
-    
-    const customRange = (startStr && endStr) 
-      ? { start: new Date(startStr), end: new Date(endStr) }
-      : undefined;
-
-    const rangeSuffix = customRange 
-      ? `${customRange.start.toISOString().split('T')[0]}_${customRange.end.toISOString().split('T')[0]}`
-      : 'default';
-    const cacheKey = `enriched_research_${journal || 'all'}_${rangeSuffix}`;
-
-    // Check Cache
-    const cached = serverCache[cacheKey];
-    if (cached && (Date.now() - cached.timestamp < ENRICHED_CACHE_DURATION)) {
-      console.log(`Serving ENRICHED RESEARCH from SERVER CACHE: ${cacheKey}`);
-      return res.json(cached.data);
-    }
-
-    try {
-      console.log(`Fetching and Enriching Research for ${journal || 'all'}...`);
-      const data = await fetchLatestResearch(journal, customRange);
-      
-      serverCache[cacheKey] = {
-        data,
-        timestamp: Date.now()
-      };
-      
-      res.json(data);
-    } catch (error: any) {
-      console.error('Research API error:', error);
-      res.status(500).send(error.message || 'Failed to fetch research');
-    }
-  });
-
-  // Guidelines API
-  app.get('/api/guidelines', async (req, res) => {
-    const cacheKey = 'enriched_guidelines_v2';
-
-    // Check Cache
-    const cached = serverCache[cacheKey];
-    if (cached && (Date.now() - cached.timestamp < GUIDELINE_CACHE_DURATION)) {
-      console.log('Serving GUIDELINES from SERVER CACHE');
-      return res.json(cached.data);
-    }
-
-    try {
-      console.log('Fetching Guidelines...');
-      const data = await fetchGuidelines();
-      
-      serverCache[cacheKey] = {
-        data,
-        timestamp: Date.now()
-      };
-      
-      res.json(data);
-    } catch (error: any) {
-      console.error('Guidelines API error:', error);
-      res.status(500).send(error.message || 'Failed to fetch guidelines');
-    }
-  });
-
-  // Deep Summary API
-  app.post('/api/deep-summary', async (req, res) => {
-    const { paper } = req.body;
-    if (!paper || !paper.id) return res.status(400).send('Missing paper data');
-
-    const cacheKey = `deep_summary_${paper.id}`;
-
-    // Check Cache
-    const cached = serverCache[cacheKey];
-    if (cached && (Date.now() - cached.timestamp < ENRICHED_CACHE_DURATION)) {
-      console.log(`Serving DEEP SUMMARY from SERVER CACHE: ${paper.id}`);
-      return res.json({ summary: cached.data });
-    }
-
-    try {
-      console.log(`Generating Deep Summary for ${paper.id}...`);
-      const summary = await generateDeepSummary(paper);
-      
-      serverCache[cacheKey] = {
-        data: summary,
-        timestamp: Date.now()
-      };
-      
-      res.json({ summary });
-    } catch (error: any) {
-      console.error('Deep Summary API error:', error);
-      res.status(500).send(error.message || 'Failed to generate summary');
-    }
-  });
-
-  // PubMed Proxy Route (Legacy/Raw)
+  // PubMed Proxy Route
   app.get('/api/pubmed', async (req, res) => {
     if (typeof fetch === 'undefined') {
       return res.status(500).send('Server environment error: fetch is not defined. Please ensure Node.js 18+ is used.');
@@ -144,7 +45,7 @@ async function startServer() {
 
     // 1. Check Server-Side Cache
     const cached = serverCache[targetUrl];
-    if (cached && (Date.now() - cached.timestamp < PUBMED_CACHE_DURATION)) {
+    if (cached && (Date.now() - cached.timestamp < SERVER_CACHE_DURATION)) {
       console.log(`Serving from SERVER CACHE: ${targetUrl}`);
       return res.send(cached.data);
     }
@@ -161,7 +62,6 @@ async function startServer() {
         headers: {
           'User-Agent': 'AnesthesiaResearchHub/1.0.0'
         },
-        // @ts-ignore
         signal: AbortSignal.timeout(15000) // 15 second timeout for PubMed
       });
       

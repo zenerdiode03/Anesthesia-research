@@ -92,29 +92,13 @@ function ymd(d: Date) {
 }
 
 async function ncbiGET(url: string, retries = 2, delay = 1000) {
-  const isServer = typeof window === 'undefined';
-  
   for (let i = 0; i <= retries; i++) {
     try {
-      let res: Response;
-      
-      if (isServer) {
-        // Direct fetch on server
-        const finalUrl = new URL(url);
-        if (process.env.NCBI_API_KEY) {
-          finalUrl.searchParams.set('api_key', process.env.NCBI_API_KEY);
-        }
-        
-        res = await fetch(finalUrl.toString(), {
-          headers: { 'User-Agent': 'AnesthesiaResearchHub/1.0.0' },
-          // @ts-ignore - AbortSignal.timeout is Node 18+
-          signal: AbortSignal.timeout(15000)
-        });
-      } else {
-        // Proxy fetch on client
-        const proxyUrl = `/api/pubmed?url=${encodeURIComponent(url)}`;
-        res = await fetch(proxyUrl, { cache: "no-store" });
-      }
+      // Use a server-side proxy to avoid CORS issues
+      const proxyUrl = `/api/pubmed?url=${encodeURIComponent(url)}`;
+      const res = await fetch(proxyUrl, { 
+        cache: "no-store"
+      });
       
       if (res.status === 429) {
         if (i < retries) {

@@ -20,12 +20,35 @@ function getAI() {
 }
 
 /**
- * Core enrichment logic (usable on server or client)
+ * Maps PubMed journal strings to our internal JournalName type.
  */
-export async function enrichResearchData(rawArticles: any[]): Promise<Paper[]> {
-  if (rawArticles.length === 0) return [];
+export async function fetchLatestResearch(journal?: JournalName, customRange?: { start: Date, end: Date }): Promise<Paper[]> {
+  const rangeSuffix = customRange 
+    ? `${customRange.start.toISOString().split('T')[0]}_${customRange.end.toISOString().split('T')[0]}`
+    : 'default';
+  const cacheKey = `research_cache_v7_${journal || 'all'}_${rangeSuffix}`;
+  const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
-  const prompt = `Act as an expert clinical research assistant in anesthesiology. 
+  try {
+    // 0. Check Cache
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      const { timestamp, data } = JSON.parse(cached);
+      if (Date.now() - timestamp < CACHE_DURATION) {
+        console.log(`Using cached data for ${journal || 'all'} (${rangeSuffix})`);
+        return data;
+      }
+    }
+
+    // 1. Get real PMIDs from PubMed
+    const pmids = await esearchPMIDsByEDAT(journal, 7, 30, customRange);
+    if (pmids.length === 0) return [];
+
+    // 2. Fetch real article metadata (Title, Authors, Abstract)
+    const rawArticles = await efetchArticles(pmids);
+
+    // 3. Use Gemini to enrich this real data with clinical insights
+    const prompt = `Act as an expert clinical research assistant in anesthesiology. 
 I have a list of real research articles recently published on PubMed. 
 Based on the provided titles and abstracts, generate:
 1. A Study Category: "Review" or "Original Article".
@@ -38,113 +61,85 @@ ${rawArticles.map((a, i) => `${i+1}. PMID: ${a.pmid}\nTitle: ${a.title}\nJournal
 
 Return your analysis as a JSON array of objects with keys: pmid, category, clinicalImpact, summary, keywords.`;
 
-  const ai = getAI();
-  let response;
-  try {
-    response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              pmid: { type: Type.STRING },
-              category: { type: Type.STRING },
-              clinicalImpact: { type: Type.STRING },
-              summary: { type: Type.STRING },
-              keywords: { 
-                type: Type.ARRAY,
-                items: { type: Type.STRING }
+    const ai = getAI();
+    let response;
+    try {
+      response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                pmid: { type: Type.STRING },
+                category: { type: Type.STRING },
+                clinicalImpact: { type: Type.STRING },
+                summary: { type: Type.STRING },
+                keywords: { 
+                  type: Type.ARRAY,
+                  items: { type: Type.STRING }
+                },
               },
-            },
-            required: ["pmid", "category", "clinicalImpact", "summary", "keywords"]
+              required: ["pmid", "category", "clinicalImpact", "summary", "keywords"]
+            }
           }
         }
+      });
+    } catch (err: any) {
+      if (err.message?.includes('fetch') || err.name === 'TypeError') {
+        throw new Error("Google AI 서비스에 연결할 수 없습니다. 네트워크 방화벽이나 VPN 설정을 확인해 주세요. (Failed to fetch Gemini API)");
       }
+      throw err;
+    }
+
+    const text = response.text;
+    if (!text) {
+      throw new Error("Gemini returned an empty response.");
+    }
+    const enrichments: any[] = JSON.parse(text);
+
+    // 4. Merge real data with AI enrichments
+    const processedArticles = rawArticles.map((raw) => {
+      const enrichment = enrichments.find(e => e.pmid === raw.pmid) || { 
+        category: 'Original Article', 
+        clinicalImpact: 'Clinical analysis pending.', 
+        summary: raw.abstract?.slice(0, 200) || 'Detailed abstract not available.',
+        keywords: []
+      };
+
+      return {
+        id: raw.pmid,
+        title: raw.title,
+        authors: raw.authors,
+        journal: normalizeJournalName(raw.journalAbbrev || raw.journal),
+        date: raw.date,
+        url: raw.url,
+        abstract: raw.abstract || undefined,
+        category: enrichment.category as any,
+        clinicalImpact: enrichment.clinicalImpact,
+        summary: enrichment.summary,
+        keywords: enrichment.keywords,
+        tags: raw.tags
+      };
     });
-  } catch (err: any) {
-    if (err.message?.includes('fetch') || err.name === 'TypeError') {
-      throw new Error("Google AI 서비스에 연결할 수 없습니다. 네트워크 방화벽이나 VPN 설정을 확인해 주세요. (Failed to fetch Gemini API)");
-    }
-    throw err;
+
+    // 5. Save to Cache
+    localStorage.setItem(cacheKey, JSON.stringify({
+      timestamp: Date.now(),
+      data: processedArticles
+    }));
+
+    return processedArticles;
+  } catch (error) {
+    console.error("Failed to process research feed:", error);
+    throw error; // Throw error to be handled by UI
   }
-
-  const text = response.text;
-  if (!text) {
-    throw new Error("Gemini returned an empty response.");
-  }
-  const enrichments: any[] = JSON.parse(text);
-
-  return rawArticles.map((raw) => {
-    const enrichment = enrichments.find(e => e.pmid === raw.pmid) || { 
-      category: 'Original Article', 
-      clinicalImpact: 'Clinical analysis pending.', 
-      summary: raw.abstract?.slice(0, 200) || 'Detailed abstract not available.',
-      keywords: []
-    };
-
-    return {
-      id: raw.pmid,
-      title: raw.title,
-      authors: raw.authors,
-      journal: normalizeJournalName(raw.journalAbbrev || raw.journal),
-      date: raw.date,
-      url: raw.url,
-      abstract: raw.abstract || undefined,
-      category: enrichment.category as any,
-      clinicalImpact: enrichment.clinicalImpact,
-      summary: enrichment.summary,
-      keywords: enrichment.keywords,
-      tags: raw.tags
-    };
-  });
-}
-
-/**
- * Maps PubMed journal strings to our internal JournalName type.
- */
-export async function fetchLatestResearch(journal?: JournalName, customRange?: { start: Date, end: Date }): Promise<Paper[]> {
-  const isServer = typeof window === 'undefined';
-  
-  // Client-side fetch from server API to avoid rate limits
-  if (!isServer) {
-    const params = new URLSearchParams();
-    if (journal) params.set('journal', journal);
-    if (customRange) {
-      params.set('start', customRange.start.toISOString());
-      params.set('end', customRange.end.toISOString());
-    }
-    
-    const res = await fetch(`/api/research?${params.toString()}`);
-    if (!res.ok) throw new Error(await res.text());
-    return await res.json();
-  }
-
-  // Server-side logic (direct fetch + enrich)
-  const pmids = await esearchPMIDsByEDAT(journal, 7, 30, customRange);
-  if (pmids.length === 0) return [];
-
-  const rawArticles = await efetchArticles(pmids);
-  return await enrichResearchData(rawArticles);
 }
 
 export async function generateDeepSummary(paper: Paper): Promise<string> {
-    const isServer = typeof window === 'undefined';
-    
-    if (!isServer) {
-        const res = await fetch('/api/deep-summary', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ paper })
-        });
-        if (!res.ok) throw new Error(await res.text());
-        const data = await res.json();
-        return data.summary;
-    }
-
     const prompt = `As a world-class academic anesthesiologist and researcher, provide a "Deep Dive" clinical critique for the following article.
     
 ARTICLE: ${paper.title}
@@ -179,32 +174,46 @@ Structure the response with high-impact professional formatting:
 }
 
 export async function fetchGuidelines(): Promise<Paper[]> {
-  const isServer = typeof window === 'undefined';
-  
-  if (!isServer) {
-    const res = await fetch('/api/guidelines');
-    if (!res.ok) throw new Error(await res.text());
-    return await res.json();
+  const cacheKey = `guidelines_cache_v2`;
+  const CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; // 1 week
+
+  try {
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      const { timestamp, data } = JSON.parse(cached);
+      if (Date.now() - timestamp < CACHE_DURATION) {
+        return data;
+      }
+    }
+
+    const pmids = await esearchGuidelines(50);
+    if (pmids.length === 0) return [];
+
+    const rawArticles = await efetchArticles(pmids);
+    
+    const processedGuidelines = rawArticles.map((raw) => ({
+      id: raw.pmid,
+      title: raw.title,
+      authors: raw.authors,
+      journal: normalizeJournalName(raw.journalAbbrev || raw.journal),
+      date: raw.date,
+      url: raw.url,
+      abstract: raw.abstract || undefined,
+      category: 'Review' as const, // Guidelines are typically reviews
+      clinicalImpact: 'Official clinical guideline or consensus statement.',
+      summary: raw.abstract?.slice(0, 300) || 'Abstract not available.',
+      keywords: raw.tags,
+      tags: raw.tags
+    }));
+
+    localStorage.setItem(cacheKey, JSON.stringify({
+      timestamp: Date.now(),
+      data: processedGuidelines
+    }));
+
+    return processedGuidelines;
+  } catch (error) {
+    console.error("Failed to fetch guidelines:", error);
+    return [];
   }
-
-  // Server-side logic
-  const pmids = await esearchGuidelines(50);
-  if (pmids.length === 0) return [];
-
-  const rawArticles = await efetchArticles(pmids);
-  
-  return rawArticles.map((raw) => ({
-    id: raw.pmid,
-    title: raw.title,
-    authors: raw.authors,
-    journal: normalizeJournalName(raw.journalAbbrev || raw.journal),
-    date: raw.date,
-    url: raw.url,
-    abstract: raw.abstract || undefined,
-    category: 'Review' as const, // Guidelines are typically reviews
-    clinicalImpact: 'Official clinical guideline or consensus statement.',
-    summary: raw.abstract?.slice(0, 300) || 'Abstract not available.',
-    keywords: raw.tags,
-    tags: raw.tags
-  }));
 }
