@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import Layout from './components/Layout';
 import PaperCard from './components/PaperCard';
 import PodcastSection from './components/PodcastSection';
+import GuidelineSection from './components/GuidelineSection';
 import { Paper, JournalName } from './types';
 import { fetchLatestResearch, generateDeepSummary } from './services/geminiService';
 import { JOURNALS } from './constants';
@@ -13,7 +14,7 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  const [viewMode, setViewMode] = useState<'live' | 'weeklyList' | 'podcast'>('live');
+  const [viewMode, setViewMode] = useState<'live' | 'weeklyList' | 'podcast' | 'guideline'>('live');
   const [weeklyPapers, setWeeklyPapers] = useState<Paper[]>([]);
   const [isWeeklyLoading, setIsWeeklyLoading] = useState(false);
 
@@ -116,6 +117,12 @@ const App: React.FC = () => {
             className={`px-8 py-3 rounded-xl text-sm font-black transition-all ${viewMode === 'podcast' ? 'bg-white text-red-600 shadow-md' : 'text-slate-500 hover:text-slate-700'}`}
           >
             논문 픽! 팟캐스트
+          </button>
+          <button 
+            onClick={() => setViewMode('guideline')}
+            className={`px-8 py-3 rounded-xl text-sm font-black transition-all ${viewMode === 'guideline' ? 'bg-white text-emerald-600 shadow-md' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            최신 가이드라인 소개
           </button>
         </div>
       </div>
@@ -232,6 +239,8 @@ const App: React.FC = () => {
         </>
       ) : viewMode === 'podcast' ? (
         <PodcastSection />
+      ) : viewMode === 'guideline' ? (
+        <GuidelineSection />
       ) : (
         <div className="max-w-6xl mx-auto space-y-12 animate-in fade-in slide-in-from-bottom-6 duration-1000">
           <div className="bg-white rounded-[3rem] border border-slate-200 shadow-xl overflow-hidden">
