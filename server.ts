@@ -1,6 +1,5 @@
 import express from 'express';
 import { createServer as createViteServer } from 'vite';
-import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -22,93 +21,11 @@ async function startServer() {
 
   // Ensure directories exist
   const ROOT_DIR = process.cwd();
-  const UPLOADS_DIR = path.join(ROOT_DIR, 'uploads');
-  const PODCASTS_DIR = path.join(UPLOADS_DIR, 'podcasts');
-  const PODCASTS_JSON = path.join(UPLOADS_DIR, 'podcasts.json');
 
-  console.log(`Initializing directories at: ${UPLOADS_DIR}`);
-  if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-  if (!fs.existsSync(PODCASTS_DIR)) fs.mkdirSync(PODCASTS_DIR, { recursive: true });
-  if (!fs.existsSync(PODCASTS_JSON)) fs.writeFileSync(PODCASTS_JSON, JSON.stringify([]));
-
-  // Multer setup
-  const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-      cb(null, PODCASTS_DIR);
-    },
-    filename: (req, file, cb) => {
-      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-      cb(null, uniqueSuffix + path.extname(file.originalname));
-    }
-  });
-  const upload = multer({ 
-    storage,
-    limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit
-  });
-
-  // Podcast APIs
+  // Health check API
   app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', uptime: process.uptime() });
   });
-
-  app.get('/api/podcasts', (req, res) => {
-    try {
-      const data = fs.readFileSync(PODCASTS_JSON, 'utf8');
-      res.json(JSON.parse(data));
-    } catch (err) {
-      res.status(500).send('Error reading podcasts data');
-    }
-  });
-
-  app.post('/api/podcasts/upload', (req, res, next) => {
-    console.log(`[UPLOAD] Starting upload request: ${req.method} ${req.url}`);
-    next();
-  }, upload.single('audio'), (req, res) => {
-    const { password, title, description } = req.body;
-    const adminPassword = process.env.ADMIN_PASSWORD || 'saburo03!@';
-
-    console.log(`[UPLOAD] Attempt received for: ${title}`);
-    console.log(`[UPLOAD] File info:`, req.file ? {
-      originalname: req.file.originalname,
-      mimetype: req.file.mimetype,
-      size: req.file.size,
-      path: req.file.path
-    } : 'No file');
-
-    if (password !== adminPassword) {
-      console.warn('[UPLOAD] Failed: Invalid password');
-      if (req.file) fs.unlinkSync(req.file.path);
-      return res.status(401).send('Invalid password');
-    }
-
-    if (!req.file) {
-      console.warn('[UPLOAD] Failed: No file provided');
-      return res.status(400).send('No audio file uploaded');
-    }
-
-    try {
-      console.log(`[UPLOAD] File saved at: ${req.file.path}`);
-      const podcasts = JSON.parse(fs.readFileSync(PODCASTS_JSON, 'utf8'));
-      const newPodcast = {
-        id: Date.now().toString(),
-        title: title || 'New Podcast',
-        description: description || '',
-        audioUrl: `/uploads/podcasts/${req.file.filename}`,
-        date: new Date().toISOString(),
-      };
-      podcasts.unshift(newPodcast);
-      fs.writeFileSync(PODCASTS_JSON, JSON.stringify(podcasts, null, 2));
-      console.log('[UPLOAD] Podcast metadata updated successfully');
-      res.json(newPodcast);
-    } catch (err) {
-      console.error('[UPLOAD] Error saving podcast data:', err);
-      res.status(500).send('Error saving podcast data');
-    }
-  });
-
-  // Serve uploaded files
-  app.use('/uploads', express.static(path.resolve(UPLOADS_DIR)));
-  console.log('Serving static files from:', path.resolve(UPLOADS_DIR));
 
   // Simple in-memory cache for PubMed requests
   // Key: URL, Value: { data: string, timestamp: number }

@@ -3,7 +3,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import Layout from './components/Layout';
 import PaperCard from './components/PaperCard';
-import PodcastSection from './components/PodcastSection';
 import GuidelineSection from './components/GuidelineSection';
 import { Paper, JournalName } from './types';
 import { fetchLatestResearch, generateDeepSummary } from './services/geminiService';
@@ -14,7 +13,7 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  const [viewMode, setViewMode] = useState<'live' | 'weeklyList' | 'podcast' | 'guideline'>('live');
+  const [viewMode, setViewMode] = useState<'live' | 'weeklyList' | 'guideline'>('live');
   const [weeklyPapers, setWeeklyPapers] = useState<Paper[]>([]);
   const [isWeeklyLoading, setIsWeeklyLoading] = useState(false);
 
@@ -111,12 +110,6 @@ const App: React.FC = () => {
             className={`px-8 py-3 rounded-xl text-sm font-black transition-all ${viewMode === 'weeklyList' ? 'bg-white text-blue-600 shadow-md' : 'text-slate-500 hover:text-slate-700'}`}
           >
             주간 출간 리스트
-          </button>
-          <button 
-            onClick={() => setViewMode('podcast')}
-            className={`px-8 py-3 rounded-xl text-sm font-black transition-all ${viewMode === 'podcast' ? 'bg-white text-red-600 shadow-md' : 'text-slate-500 hover:text-slate-700'}`}
-          >
-            논문 픽! 팟캐스트
           </button>
           <button 
             onClick={() => setViewMode('guideline')}
@@ -237,8 +230,6 @@ const App: React.FC = () => {
             </div>
           )}
         </>
-      ) : viewMode === 'podcast' ? (
-        <PodcastSection />
       ) : viewMode === 'guideline' ? (
         <GuidelineSection />
       ) : (
