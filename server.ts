@@ -17,12 +17,14 @@ async function startServer() {
   app.use(express.urlencoded({ extended: true }));
 
   // Ensure directories exist
-  const UPLOADS_DIR = path.join(__dirname, 'uploads');
+  const ROOT_DIR = process.cwd();
+  const UPLOADS_DIR = path.join(ROOT_DIR, 'uploads');
   const PODCASTS_DIR = path.join(UPLOADS_DIR, 'podcasts');
   const PODCASTS_JSON = path.join(UPLOADS_DIR, 'podcasts.json');
 
-  if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR);
-  if (!fs.existsSync(PODCASTS_DIR)) fs.mkdirSync(PODCASTS_DIR);
+  console.log(`Initializing directories at: ${UPLOADS_DIR}`);
+  if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+  if (!fs.existsSync(PODCASTS_DIR)) fs.mkdirSync(PODCASTS_DIR, { recursive: true });
   if (!fs.existsSync(PODCASTS_JSON)) fs.writeFileSync(PODCASTS_JSON, JSON.stringify([]));
 
   // Multer setup
@@ -52,19 +54,23 @@ async function startServer() {
 
   app.post('/api/podcasts/upload', upload.single('audio'), (req, res) => {
     const { password, title, description } = req.body;
-    const adminPassword = process.env.ADMIN_PASSWORD || 'hunter123'; // Default password if not set
+    const adminPassword = process.env.ADMIN_PASSWORD || 'hunter123';
+
+    console.log(`Upload attempt received for: ${title}`);
 
     if (password !== adminPassword) {
-      // Delete uploaded file if password fails
+      console.warn('Upload failed: Invalid password');
       if (req.file) fs.unlinkSync(req.file.path);
       return res.status(401).send('Invalid password');
     }
 
     if (!req.file) {
+      console.warn('Upload failed: No file provided');
       return res.status(400).send('No audio file uploaded');
     }
 
     try {
+      console.log(`File saved at: ${req.file.path}`);
       const podcasts = JSON.parse(fs.readFileSync(PODCASTS_JSON, 'utf8'));
       const newPodcast = {
         id: Date.now().toString(),
@@ -75,14 +81,17 @@ async function startServer() {
       };
       podcasts.unshift(newPodcast);
       fs.writeFileSync(PODCASTS_JSON, JSON.stringify(podcasts, null, 2));
+      console.log('Podcast metadata updated successfully');
       res.json(newPodcast);
     } catch (err) {
+      console.error('Error saving podcast data:', err);
       res.status(500).send('Error saving podcast data');
     }
   });
 
   // Serve uploaded files
-  app.use('/uploads', express.static(UPLOADS_DIR));
+  app.use('/uploads', express.static(path.resolve(UPLOADS_DIR)));
+  console.log('Serving static files from:', path.resolve(UPLOADS_DIR));
 
   // Simple in-memory cache for PubMed requests
   // Key: URL, Value: { data: string, timestamp: number }
