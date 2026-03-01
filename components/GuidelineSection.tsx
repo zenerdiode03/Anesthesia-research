@@ -99,7 +99,7 @@ const GuidelineSection: React.FC = () => {
 
               {expandedId === g.id && (
                 <div className="px-8 pb-8 animate-in fade-in slide-in-from-top-4 duration-300">
-                  <div className="pt-6 border-t border-slate-100 space-y-6">
+                  <div className="pt-6 border-t border-slate-100 flex flex-wrap gap-3">
                     <a 
                       href={g.url} 
                       target="_blank" 
@@ -110,13 +110,23 @@ const GuidelineSection: React.FC = () => {
                       <span>원본 논문 보기 (PubMed)</span>
                     </a>
                     
+                    <a 
+                      href={`https://scholar.google.com/scholar?q=${encodeURIComponent(g.title)}`}
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center space-x-2 text-sm font-black text-slate-600 hover:text-slate-700 bg-slate-100 px-4 py-2 rounded-xl transition-all"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      <span>Google Scholar</span>
+                    </a>
+                  </div>
+                    
                     <div className="prose prose-slate max-w-none">
                       <p className="text-slate-700 leading-relaxed whitespace-pre-wrap font-medium">
                         {g.abstract || g.summary}
                       </p>
                     </div>
                   </div>
-                </div>
               )}
             </div>
           ))

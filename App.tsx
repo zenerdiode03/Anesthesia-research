@@ -89,10 +89,22 @@ const App: React.FC = () => {
             최신 연구 트렌드를 <br/>
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-300">사냥하세요</span>
           </h2>
-          <p className="text-lg text-slate-400 font-medium leading-relaxed max-w-2xl">
+          <p className="text-lg text-slate-400 font-medium leading-relaxed max-w-2xl mb-10">
             수많은 논문의 홍수 속에서 마취통증의학 연구자에게 꼭 필요한 핵심 정보만 골라냅니다. 
             Gemini AI가 제공하는 실시간 임상 요약으로 지식 습득의 효율을 극대화하세요.
           </p>
+          
+          <a 
+            href="https://www.youtube.com/@hjpainfree" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="inline-flex items-center space-x-3 bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-2xl font-black transition-all shadow-xl shadow-red-900/40 group"
+          >
+            <svg className="w-6 h-6 transition-transform group-hover:scale-110" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+            </svg>
+            <span>마취사냥꾼 YouTube 채널 바로가기</span>
+          </a>
         </div>
       </div>
 
@@ -172,6 +184,11 @@ const App: React.FC = () => {
                 <p className="text-red-700 text-sm font-medium mt-1">{error}</p>
                 <div className="mt-2 text-[10px] text-red-500 font-mono opacity-50 flex flex-col space-y-1">
                   <div>{new Date().toLocaleTimeString()} | {window.location.hostname}</div>
+                  {error.includes('API key') && (
+                    <div className="bg-red-100/50 p-1 rounded">
+                      Detected Key: {process.env.GEMINI_API_KEY ? `${process.env.GEMINI_API_KEY.slice(0, 4)}...${process.env.GEMINI_API_KEY.slice(-4)}` : 'Not Found'}
+                    </div>
+                  )}
                 </div>
               </div>
               <button 
@@ -253,6 +270,11 @@ const App: React.FC = () => {
                     <p className="text-red-700 text-sm font-medium mt-1">{error}</p>
                     <div className="mt-2 text-[10px] text-red-500 font-mono opacity-50 flex flex-col space-y-1">
                       <div>{new Date().toLocaleTimeString()} | {window.location.hostname}</div>
+                      {error.includes('API key') && (
+                        <div className="bg-red-100/50 p-1 rounded">
+                          Detected Key: {process.env.GEMINI_API_KEY ? `${process.env.GEMINI_API_KEY.slice(0, 4)}...${process.env.GEMINI_API_KEY.slice(-4)}` : 'Not Found'}
+                        </div>
+                      )}
                     </div>
                   </div>
                   <button 
@@ -297,16 +319,28 @@ const App: React.FC = () => {
                             </span>
                           </td>
                           <td className="py-6 px-4">
-                            <a 
-                              href={paper.url} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="text-slate-900 font-bold text-sm hover:text-blue-600 transition-colors line-clamp-2 leading-snug"
-                            >
-                              {paper.title}
-                            </a>
-                            <div className="mt-1 text-[10px] text-slate-400 font-medium">
-                              {paper.authors.slice(0, 3).join(', ')}{paper.authors.length > 3 ? ' et al.' : ''}
+                            <div className="flex flex-col space-y-2">
+                              <a 
+                                href={paper.url} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-slate-900 font-bold text-sm hover:text-blue-600 transition-colors line-clamp-2 leading-snug"
+                              >
+                                {paper.title}
+                              </a>
+                              <div className="flex items-center space-x-2">
+                                <a 
+                                  href={`https://scholar.google.com/scholar?q=${encodeURIComponent(paper.title)}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center px-2 py-0.5 bg-blue-50 text-blue-600 text-[9px] font-black rounded hover:bg-blue-100 transition-all uppercase tracking-widest"
+                                >
+                                  Scholar
+                                </a>
+                                <div className="text-[10px] text-slate-400 font-medium">
+                                  {paper.authors.slice(0, 3).join(', ')}{paper.authors.length > 3 ? ' et al.' : ''}
+                                </div>
+                              </div>
                             </div>
                           </td>
                           <td className="py-6 px-4">

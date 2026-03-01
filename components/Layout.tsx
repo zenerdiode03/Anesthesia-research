@@ -54,7 +54,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </div>
           
           <div className="text-right flex flex-col justify-end space-y-4">
-            <div className="space-x-6 text-sm font-bold">
+            <div className="flex items-center justify-end space-x-6 text-sm font-bold">
               <a href="#" className="hover:text-white transition-colors">원천 데이터(NCBI)</a>
             </div>
             <div className="text-xs space-y-1">
