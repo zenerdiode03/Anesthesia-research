@@ -1,11 +1,43 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { Users } from 'lucide-react';
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
+  const [visitorCount, setVisitorCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    const trackVisit = async () => {
+      try {
+        // Track visit only once per session
+        const sessionKey = `visited_${new Date().toISOString().split('T')[0]}`;
+        const hasVisited = sessionStorage.getItem(sessionKey);
+        
+        let endpoint = '/api/stats/visitors';
+        let method = 'GET';
+        
+        if (!hasVisited) {
+          endpoint = '/api/stats/visit';
+          method = 'POST';
+          sessionStorage.setItem(sessionKey, 'true');
+        }
+
+        const response = await fetch(endpoint, { method });
+        if (response.ok) {
+          const data = await response.json();
+          setVisitorCount(data.count);
+        }
+      } catch (error) {
+        console.error('Failed to track visit:', error);
+      }
+    };
+
+    trackVisit();
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col selection:bg-blue-100 selection:text-blue-900">
       <header className="sticky top-0 z-50 glass-effect">
@@ -25,7 +57,17 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               </div>
             </div>
 
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-6">
+              {visitorCount !== null && (
+                <div className="flex items-center space-x-2 bg-slate-100 px-3 py-1.5 rounded-full border border-slate-200">
+                  <Users className="w-3.5 h-3.5 text-slate-500" />
+                  <div className="flex flex-col leading-none">
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Today's Visitors</span>
+                    <span className="text-xs font-black text-slate-900">{visitorCount.toLocaleString()}</span>
+                  </div>
+                </div>
+              )}
+              
               <div className="hidden lg:flex flex-col items-end mr-2">
                 <span className="text-[10px] font-black text-green-600 uppercase tracking-tighter">Live from PubMed</span>
                 <span className="text-[9px] text-slate-400 font-medium">Updated every 24h</span>

@@ -38,6 +38,9 @@ async function startServer() {
   let lastCacheDate: string | null = null;
   let isFetching = false;
 
+  // Daily Visitor Tracking
+  const visitorCounts: Record<string, number> = {};
+
   // PubMed Proxy Route
   app.get('/api/pubmed', async (req, res) => {
     const targetUrl = req.query.url as string;
@@ -83,6 +86,18 @@ async function startServer() {
       const message = error instanceof Error ? error.message : 'Unknown error';
       res.status(500).send(`Error proxying request to PubMed: ${message}`);
     }
+  });
+
+  // Visitor API
+  app.post('/api/stats/visit', (req, res) => {
+    const today = new Date().toISOString().split('T')[0];
+    visitorCounts[today] = (visitorCounts[today] || 0) + 1;
+    res.json({ count: visitorCounts[today] });
+  });
+
+  app.get('/api/stats/visitors', (req, res) => {
+    const today = new Date().toISOString().split('T')[0];
+    res.json({ count: visitorCounts[today] || 0 });
   });
 
   // Daily Research API
