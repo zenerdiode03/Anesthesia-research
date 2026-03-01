@@ -4,7 +4,6 @@ import ReactMarkdown from 'react-markdown';
 import Layout from './components/Layout';
 import PaperCard from './components/PaperCard';
 import PodcastSection from './components/PodcastSection';
-import ResearchInsights from './components/ResearchInsights';
 import { Paper, JournalName } from './types';
 import { fetchLatestResearch, generateDeepSummary } from './services/geminiService';
 import { JOURNALS } from './constants';
@@ -14,7 +13,7 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  const [viewMode, setViewMode] = useState<'live' | 'weeklyList' | 'podcast' | 'insights'>('live');
+  const [viewMode, setViewMode] = useState<'live' | 'weeklyList' | 'podcast'>('live');
   const [weeklyPapers, setWeeklyPapers] = useState<Paper[]>([]);
   const [isWeeklyLoading, setIsWeeklyLoading] = useState(false);
 
@@ -118,12 +117,6 @@ const App: React.FC = () => {
           >
             논문 픽! 팟캐스트
           </button>
-          <button 
-            onClick={() => setViewMode('insights')}
-            className={`px-8 py-3 rounded-xl text-sm font-black transition-all ${viewMode === 'insights' ? 'bg-white text-blue-600 shadow-md' : 'text-slate-500 hover:text-slate-700'}`}
-          >
-            연구 트렌드
-          </button>
         </div>
       </div>
 
@@ -144,6 +137,9 @@ const App: React.FC = () => {
                 </div>
               </div>
               <p className="text-slate-500 text-sm font-medium">마취통증의학 주요 저널의 최신 연구 성과를 실시간으로 확인하세요.</p>
+              <p className="text-blue-600 text-[11px] font-bold mt-1">
+                SCHOLAR 버튼을 누르면 Google scholar로 들어갑니다. 이를 통해 개인 google 계정에서 논문을 보관하실 수 있습니다.
+              </p>
             </div>
             
             <div className="bg-slate-50/50 border border-slate-100 rounded-[2rem] p-6">
@@ -236,8 +232,6 @@ const App: React.FC = () => {
         </>
       ) : viewMode === 'podcast' ? (
         <PodcastSection />
-      ) : viewMode === 'insights' ? (
-        <ResearchInsights />
       ) : (
         <div className="max-w-6xl mx-auto space-y-12 animate-in fade-in slide-in-from-bottom-6 duration-1000">
           <div className="bg-white rounded-[3rem] border border-slate-200 shadow-xl overflow-hidden">
