@@ -103,15 +103,29 @@ const PaperCard: React.FC<PaperCardProps> = ({ paper }) => {
       </div>
 
       <div className="px-6 py-4 bg-slate-50/80 border-t border-slate-100 flex items-center justify-between">
-        <button 
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="text-[11px] font-bold text-slate-500 hover:text-slate-900 flex items-center transition-colors uppercase tracking-widest"
-        >
-          {isExpanded ? 'Show Less' : 'Full Details'}
-          <svg className={`w-3.5 h-3.5 ml-1.5 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
+        <div className="flex items-center space-x-4">
+          <button 
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="text-[11px] font-bold text-slate-500 hover:text-slate-900 flex items-center transition-colors uppercase tracking-widest"
+          >
+            {isExpanded ? 'Show Less' : 'Full Details'}
+            <svg className={`w-3.5 h-3.5 ml-1.5 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          
+          <a 
+            href={`https://scholar.google.com/scholar?q=${encodeURIComponent(paper.title)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[11px] font-bold text-slate-400 hover:text-blue-600 flex items-center transition-colors uppercase tracking-widest"
+          >
+            <svg className="w-3.5 h-3.5 mr-1.5" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M5.242 13.769L0.5 9.5 12 0l11.5 9.5-4.742 4.269C17.403 12.739 14.791 12 12 12s-5.403 0.739-6.758 1.769zM12 13a9.927 9.927 0 0 1 6 2v5a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2v-5a9.927 9.927 0 0 1 6-2z" />
+            </svg>
+            Scholar
+          </a>
+        </div>
       </div>
     </div>
   );
