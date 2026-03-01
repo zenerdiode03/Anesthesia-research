@@ -119,10 +119,15 @@ async function startServer() {
   });
 
   app.post('/api/guidelines/upload', (req, res) => {
+    console.log(`[GUIDELINE UPLOAD] Attempt received: ${req.method} ${req.url}`);
     const { password, title, link, content } = req.body;
     const adminPassword = process.env.ADMIN_PASSWORD || 'saburo03!@';
 
+    console.log(`[GUIDELINE UPLOAD] Title: ${title}, Link: ${link}`);
+    console.log(`[GUIDELINE UPLOAD] Password provided: ${password ? 'Yes' : 'No'}`);
+
     if (password !== adminPassword) {
+      console.warn('[GUIDELINE UPLOAD] Failed: Invalid password');
       return res.status(401).send('Invalid password');
     }
 
