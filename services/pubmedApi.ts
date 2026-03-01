@@ -162,6 +162,30 @@ export async function esearchPMIDsByEDAT(journal?: string, days = 30, retmax = 2
   return (json?.esearchresult?.idlist ?? []) as string[];
 }
 
+export async function esearchGuidelines(retmax = 50) {
+  const end = new Date();
+  const start = new Date();
+  start.setFullYear(end.getFullYear() - 1); // 1 year ago
+  
+  const journalQuery = buildJournalQuery();
+  const guidelineTerms = '("guideline"[Title] OR "consensus statement"[Title] OR "Practice Guideline"[pt] OR "Consensus Development Conference"[pt]) AND "Review"[pt]';
+  const term = `${journalQuery} AND ${guidelineTerms} AND ("${ymd(start)}"[dp] : "${ymd(end)}"[dp])`;
+
+  console.log(`PubMed Guideline Search Term: ${term}`);
+
+  const params = new URLSearchParams({
+    db: "pubmed",
+    retmode: "json",
+    retmax: String(retmax),
+    sort: "pub+date",
+    term,
+  });
+  const url = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?${params.toString()}`;
+  const txt = await ncbiGET(url);
+  const json = JSON.parse(txt);
+  return (json?.esearchresult?.idlist ?? []) as string[];
+}
+
 const parser = new XMLParser({
   ignoreAttributes: false,
   attributeNamePrefix: "@_",

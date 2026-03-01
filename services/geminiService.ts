@@ -1,7 +1,7 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
 import { Paper, JournalName } from "../types";
-import { esearchPMIDsByEDAT, efetchArticles, normalizeJournalName } from "./pubmedApi";
+import { esearchPMIDsByEDAT, efetchArticles, normalizeJournalName, esearchGuidelines } from "./pubmedApi";
 
 // Lazy initialization to prevent crash if API key is missing at load time
 let aiInstance: GoogleGenAI | null = null;
@@ -171,4 +171,49 @@ Structure the response with high-impact professional formatting:
     }
 
     return response.text || "Summary generation failed. Please try again.";
+}
+
+export async function fetchGuidelines(): Promise<Paper[]> {
+  const cacheKey = `guidelines_cache_v2`;
+  const CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; // 1 week
+
+  try {
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      const { timestamp, data } = JSON.parse(cached);
+      if (Date.now() - timestamp < CACHE_DURATION) {
+        return data;
+      }
+    }
+
+    const pmids = await esearchGuidelines(50);
+    if (pmids.length === 0) return [];
+
+    const rawArticles = await efetchArticles(pmids);
+    
+    const processedGuidelines = rawArticles.map((raw) => ({
+      id: raw.pmid,
+      title: raw.title,
+      authors: raw.authors,
+      journal: normalizeJournalName(raw.journalAbbrev || raw.journal),
+      date: raw.date,
+      url: raw.url,
+      abstract: raw.abstract || undefined,
+      category: 'Review' as const, // Guidelines are typically reviews
+      clinicalImpact: 'Official clinical guideline or consensus statement.',
+      summary: raw.abstract?.slice(0, 300) || 'Abstract not available.',
+      keywords: raw.tags,
+      tags: raw.tags
+    }));
+
+    localStorage.setItem(cacheKey, JSON.stringify({
+      timestamp: Date.now(),
+      data: processedGuidelines
+    }));
+
+    return processedGuidelines;
+  } catch (error) {
+    console.error("Failed to fetch guidelines:", error);
+    return [];
+  }
 }

@@ -25,13 +25,11 @@ async function startServer() {
   const UPLOADS_DIR = path.join(ROOT_DIR, 'uploads');
   const PODCASTS_DIR = path.join(UPLOADS_DIR, 'podcasts');
   const PODCASTS_JSON = path.join(UPLOADS_DIR, 'podcasts.json');
-  const GUIDELINES_JSON = path.join(UPLOADS_DIR, 'guidelines.json');
 
   console.log(`Initializing directories at: ${UPLOADS_DIR}`);
   if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
   if (!fs.existsSync(PODCASTS_DIR)) fs.mkdirSync(PODCASTS_DIR, { recursive: true });
   if (!fs.existsSync(PODCASTS_JSON)) fs.writeFileSync(PODCASTS_JSON, JSON.stringify([]));
-  if (!fs.existsSync(GUIDELINES_JSON)) fs.writeFileSync(GUIDELINES_JSON, JSON.stringify([]));
 
   // Multer setup
   const storage = multer.diskStorage({
@@ -105,68 +103,6 @@ async function startServer() {
     } catch (err) {
       console.error('[UPLOAD] Error saving podcast data:', err);
       res.status(500).send('Error saving podcast data');
-    }
-  });
-
-  // Guidelines APIs
-  app.get('/api/guidelines', (req, res) => {
-    try {
-      const data = fs.readFileSync(GUIDELINES_JSON, 'utf8');
-      res.json(JSON.parse(data));
-    } catch (err) {
-      res.status(500).send('Error reading guidelines data');
-    }
-  });
-
-  app.post('/api/guidelines/upload', (req, res) => {
-    console.log(`[GUIDELINE UPLOAD] Attempt received: ${req.method} ${req.url}`);
-    const { password, title, link, content } = req.body;
-    const adminPassword = process.env.ADMIN_PASSWORD || 'saburo03!@';
-
-    console.log(`[GUIDELINE UPLOAD] Title: ${title}, Link: ${link}`);
-    console.log(`[GUIDELINE UPLOAD] Password provided: ${password ? 'Yes' : 'No'}`);
-
-    if (password !== adminPassword) {
-      console.warn('[GUIDELINE UPLOAD] Failed: Invalid password');
-      return res.status(401).send('Invalid password');
-    }
-
-    if (!title || !content) {
-      return res.status(400).send('Title and content are required');
-    }
-
-    try {
-      const guidelines = JSON.parse(fs.readFileSync(GUIDELINES_JSON, 'utf8'));
-      const newGuideline = {
-        id: Date.now().toString(),
-        title,
-        link: link || '',
-        content,
-        views: 0,
-        date: new Date().toISOString(),
-      };
-      guidelines.unshift(newGuideline);
-      fs.writeFileSync(GUIDELINES_JSON, JSON.stringify(guidelines, null, 2));
-      res.json(newGuideline);
-    } catch (err) {
-      res.status(500).send('Error saving guideline data');
-    }
-  });
-
-  app.post('/api/guidelines/:id/view', (req, res) => {
-    const { id } = req.params;
-    try {
-      const guidelines = JSON.parse(fs.readFileSync(GUIDELINES_JSON, 'utf8'));
-      const guideline = guidelines.find((g: any) => g.id === id);
-      if (guideline) {
-        guideline.views = (guideline.views || 0) + 1;
-        fs.writeFileSync(GUIDELINES_JSON, JSON.stringify(guidelines, null, 2));
-        res.json({ views: guideline.views });
-      } else {
-        res.status(404).send('Guideline not found');
-      }
-    } catch (err) {
-      res.status(500).send('Error updating view count');
     }
   });
 
