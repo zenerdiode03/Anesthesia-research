@@ -231,11 +231,11 @@ const AdminUploadModal: React.FC<{ onClose: () => void, onSuccess: () => void }>
 
           <div className="grid grid-cols-2 gap-6">
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">음성 파일 (MP3, WAV)</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">음성 파일 (MP3, WAV, M4A)</label>
               <div className="relative">
                 <input 
                   type="file"
-                  accept="audio/*"
+                  accept="audio/mpeg,audio/wav,audio/x-wav,audio/mp4,audio/x-m4a,audio/*"
                   onChange={(e) => setFile(e.target.files?.[0] || null)}
                   className="hidden"
                   id="audio-upload"
