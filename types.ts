@@ -15,23 +15,33 @@ export interface Paper {
   keywords?: string[];
 }
 
+export interface Podcast {
+  id: string;
+  title: string;
+  description: string;
+  audioUrl: string;
+  date: string;
+  duration?: string;
+}
+
 export type JournalName = 
-  | 'Anesthesiology'
-  | 'British Journal of Anaesthesia'
   | 'Anaesthesia'
-  | 'Anesthesia & Analgesia'
-  | 'European Journal of Anaesthesiology'
-  | 'Regional Anesthesia & Pain Medicine'
-  | 'Canadian Journal of Anesthesia'
-  | 'Journal of Clinical Anesthesia'
-  | 'Korean Journal of Anesthesiology'
-  | 'Journal of Anesthesia'
-  | 'Pain'
   | 'Anaesthesia Critical Care and Pain Medicine'
+  | 'Anesthesia & Analgesia'
+  | 'Anesthesiology'
   | 'BJA Education'
-  | 'Journal of Neurosurgical Anesthesiology'
+  | 'British Journal of Anaesthesia'
+  | 'Canadian Journal of Anesthesia'
+  | 'European Journal of Anaesthesiology'
+  | 'Journal of Anesthesia'
   | 'Journal of Cardiothoracic and Vascular Anesthesia'
-  | 'Paediatric Anaesthesia';
+  | 'Journal of Clinical Anesthesia'
+  | 'Journal of Neurosurgical Anesthesiology'
+  | 'Korean Journal of Anesthesiology'
+  | 'Korean Journal of Pain'
+  | 'Paediatric Anaesthesia'
+  | 'Pain'
+  | 'Regional Anesthesia & Pain Medicine';
 
 export interface JournalInfo {
   name: JournalName;

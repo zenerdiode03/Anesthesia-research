@@ -1,9 +1,88 @@
 import express from 'express';
 import { createServer as createViteServer } from 'vite';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 async function startServer() {
   const app = express();
   const PORT = 3000;
+
+  // Middleware
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
+
+  // Ensure directories exist
+  const UPLOADS_DIR = path.join(__dirname, 'uploads');
+  const PODCASTS_DIR = path.join(UPLOADS_DIR, 'podcasts');
+  const PODCASTS_JSON = path.join(UPLOADS_DIR, 'podcasts.json');
+
+  if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR);
+  if (!fs.existsSync(PODCASTS_DIR)) fs.mkdirSync(PODCASTS_DIR);
+  if (!fs.existsSync(PODCASTS_JSON)) fs.writeFileSync(PODCASTS_JSON, JSON.stringify([]));
+
+  // Multer setup
+  const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, PODCASTS_DIR);
+    },
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      cb(null, uniqueSuffix + path.extname(file.originalname));
+    }
+  });
+  const upload = multer({ 
+    storage,
+    limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit
+  });
+
+  // Podcast APIs
+  app.get('/api/podcasts', (req, res) => {
+    try {
+      const data = fs.readFileSync(PODCASTS_JSON, 'utf8');
+      res.json(JSON.parse(data));
+    } catch (err) {
+      res.status(500).send('Error reading podcasts data');
+    }
+  });
+
+  app.post('/api/podcasts/upload', upload.single('audio'), (req, res) => {
+    const { password, title, description } = req.body;
+    const adminPassword = process.env.ADMIN_PASSWORD || 'hunter123'; // Default password if not set
+
+    if (password !== adminPassword) {
+      // Delete uploaded file if password fails
+      if (req.file) fs.unlinkSync(req.file.path);
+      return res.status(401).send('Invalid password');
+    }
+
+    if (!req.file) {
+      return res.status(400).send('No audio file uploaded');
+    }
+
+    try {
+      const podcasts = JSON.parse(fs.readFileSync(PODCASTS_JSON, 'utf8'));
+      const newPodcast = {
+        id: Date.now().toString(),
+        title: title || 'New Podcast',
+        description: description || '',
+        audioUrl: `/uploads/podcasts/${req.file.filename}`,
+        date: new Date().toISOString(),
+      };
+      podcasts.unshift(newPodcast);
+      fs.writeFileSync(PODCASTS_JSON, JSON.stringify(podcasts, null, 2));
+      res.json(newPodcast);
+    } catch (err) {
+      res.status(500).send('Error saving podcast data');
+    }
+  });
+
+  // Serve uploaded files
+  app.use('/uploads', express.static(UPLOADS_DIR));
 
   // Simple in-memory cache for PubMed requests
   // Key: URL, Value: { data: string, timestamp: number }

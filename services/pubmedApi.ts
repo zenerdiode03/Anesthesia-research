@@ -7,22 +7,23 @@ const NCBI_API_KEY = null; // Handled by server-side proxy
 export type JournalSpec = { label: string; ta: string };
 
 export const PUBMED_JOURNALS: JournalSpec[] = [
-  { label: "Anesthesiology", ta: "Anesthesiology" },
-  { label: "British Journal of Anaesthesia", ta: "Br J Anaesth" },
   { label: "Anaesthesia", ta: "Anaesthesia" },
-  { label: "Anesthesia & Analgesia", ta: "Anesth Analg" },
-  { label: "European Journal of Anaesthesiology", ta: "Eur J Anaesthesiol" },
-  { label: "Regional Anesthesia & Pain Medicine", ta: "Reg Anesth Pain Med" },
-  { label: "Canadian Journal of Anesthesia", ta: "Can J Anaesth" },
-  { label: "Journal of Clinical Anesthesia", ta: "J Clin Anesth" },
-  { label: "Korean Journal of Anesthesiology", ta: "Korean J Anesthesiol" },
-  { label: "Journal of Anesthesia", ta: "J Anesth" },
-  { label: "Pain", ta: "Pain" },
   { label: "Anaesthesia Critical Care and Pain Medicine", ta: "Anaesth Crit Care Pain Med" },
+  { label: "Anesthesia & Analgesia", ta: "Anesth Analg" },
+  { label: "Anesthesiology", ta: "Anesthesiology" },
   { label: "BJA Education", ta: "BJA Educ" },
-  { label: "Journal of Neurosurgical Anesthesiology", ta: "J Neurosurg Anesthesiol" },
+  { label: "British Journal of Anaesthesia", ta: "Br J Anaesth" },
+  { label: "Canadian Journal of Anesthesia", ta: "Can J Anaesth" },
+  { label: "European Journal of Anaesthesiology", ta: "Eur J Anaesthesiol" },
+  { label: "Journal of Anesthesia", ta: "J Anesth" },
   { label: "Journal of Cardiothoracic and Vascular Anesthesia", ta: "J Cardiothorac Vasc Anesth" },
+  { label: "Journal of Clinical Anesthesia", ta: "J Clin Anesth" },
+  { label: "Journal of Neurosurgical Anesthesiology", ta: "J Neurosurg Anesthesiol" },
+  { label: "Korean Journal of Anesthesiology", ta: "Korean J Anesthesiol" },
+  { label: "Korean Journal of Pain", ta: "Korean J Pain" },
   { label: "Paediatric Anaesthesia", ta: "Paediatr Anaesth" },
+  { label: "Pain", ta: "Pain" },
+  { label: "Regional Anesthesia & Pain Medicine", ta: "Reg Anesth Pain Med" },
 ];
 
 export function buildJournalQuery(specificJournalLabel?: string) {
