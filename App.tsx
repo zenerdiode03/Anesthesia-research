@@ -7,6 +7,7 @@ import GuidelineSection from './components/GuidelineSection';
 import { Paper, JournalName } from './types';
 import { fetchLatestResearch, generateDeepSummary } from './services/geminiService';
 import { JOURNALS } from './constants';
+import { Cookie } from 'lucide-react';
 
 const App: React.FC = () => {
   const [papers, setPapers] = useState<Paper[]>([]);
@@ -80,14 +81,14 @@ const App: React.FC = () => {
         <div className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-slate-600/20 blur-3xl"></div>
         
         <div className="relative z-10 max-w-3xl">
-          <div className="inline-flex items-center space-x-2 bg-blue-500/10 border border-blue-500/20 px-3 py-1 rounded-full text-blue-400 text-[10px] font-black uppercase tracking-[0.2em] mb-6">
-            <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
-            <span>RESEARCH TRACKING</span>
+          <div className="inline-flex items-center space-x-2 bg-amber-500/10 border border-amber-500/20 px-3 py-1.5 rounded-full text-amber-400 text-[10px] font-black uppercase tracking-[0.2em] mb-6 shadow-lg shadow-amber-900/10">
+            <Cookie className="w-3.5 h-3.5" />
+            <span>RESEARCH SNACKING</span>
           </div>
           <h2 className="text-4xl md:text-6xl font-black text-white leading-[1.1] tracking-tight mb-6">
             마취통증의학의 <br/>
             최신 연구 트렌드를 <br/>
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-300">사냥하세요</span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-300">캐치하세요</span>
           </h2>
           <p className="text-lg text-slate-400 font-medium leading-relaxed max-w-2xl mb-10">
             수많은 논문의 홍수 속에서 마취통증의학 연구자에게 꼭 필요한 핵심 정보만 골라냅니다. 
