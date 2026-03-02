@@ -83,12 +83,12 @@ const App: React.FC = () => {
         <div className="relative z-10 max-w-3xl">
 
           <h2 className="text-3xl md:text-5xl font-black text-white leading-[1.2] tracking-tighter mb-8">
-            <span className="text-blue-500">T</span>rends & <span className="text-blue-500">R</span>esearch <span className="text-slate-500">in</span> <span className="text-blue-500">A</span>nesthesiology <br/>
-            <span className="text-blue-500">C</span>utting-edge <span className="text-blue-500">K</span>nowledge
+            <span className="text-blue-500">A</span>nes<span className="text-blue-500">TH</span>esiology <span className="text-blue-500">E</span>xploration <span className="text-slate-500">of</span> <br/>
+            <span className="text-blue-500">N</span>ew <span className="text-blue-500">A</span>dvances
           </h2>
           <p className="text-lg text-slate-400 font-medium leading-relaxed max-w-2xl mb-12">
             수많은 논문의 홍수 속에서 마취통증의학 연구자에게 꼭 필요한 핵심 정보만 골라냅니다. 
-            TRACK은 Gemini AI를 통해 실시간 임상 요약을 제공하여 지식 습득의 효율을 극대화합니다.
+            ATHENA는 Gemini AI를 통해 실시간 임상 요약을 제공하여 지식 습득의 효율을 극대화합니다.
           </p>
           
 
