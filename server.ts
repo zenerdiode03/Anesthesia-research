@@ -3,7 +3,7 @@ import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import { fetchAndProcessResearch } from './server-research';
+import { fetchAndProcessResearch, fetchKeywordAnalysis } from './server-research';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -40,6 +40,11 @@ async function startServer() {
 
   // Daily Visitor Tracking
   const visitorCounts: Record<string, number> = {};
+
+  // Cache for Keyword Analysis (6 months)
+  let keywordCache: any[] | null = null;
+  let lastKeywordUpdate: number | null = null;
+  const SIX_MONTHS = 180 * 24 * 60 * 60 * 1000;
 
   // PubMed Proxy Route
   app.get('/api/pubmed', async (req, res) => {
@@ -98,6 +103,33 @@ async function startServer() {
   app.get('/api/stats/visitors', (req, res) => {
     const today = new Date().toISOString().split('T')[0];
     res.json({ count: visitorCounts[today] || 0 });
+  });
+
+  // Keyword Analysis API
+  app.get('/api/research/keywords', async (req, res) => {
+    const now = Date.now();
+    if (keywordCache && lastKeywordUpdate && (now - lastKeywordUpdate < SIX_MONTHS)) {
+      console.log(`[${new Date().toISOString()}] Serving KEYWORD CACHE`);
+      return res.json(keywordCache);
+    }
+
+    try {
+      console.log(`[${new Date().toISOString()}] Keyword Cache expired or missing. Fetching...`);
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) throw new Error("GEMINI_API_KEY missing");
+      
+      const startTime = Date.now();
+      const data = await fetchKeywordAnalysis(apiKey);
+      const duration = (Date.now() - startTime) / 1000;
+      console.log(`[${new Date().toISOString()}] Keyword analysis completed in ${duration}s`);
+      
+      keywordCache = data;
+      lastKeywordUpdate = now;
+      res.json(data);
+    } catch (error: any) {
+      console.error('Keyword analysis extraction error:', error);
+      res.status(500).json({ error: "Failed to fetch keyword analysis" });
+    }
   });
 
   // Daily Research API

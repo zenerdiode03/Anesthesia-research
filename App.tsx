@@ -85,27 +85,16 @@ const App: React.FC = () => {
             <Cookie className="w-3.5 h-3.5" />
             <span>RESEARCH SNACKING</span>
           </div>
-          <h2 className="text-4xl md:text-6xl font-black text-white leading-[1.1] tracking-tight mb-6">
-            마취통증의학의 <br/>
-            최신 연구 트렌드를 <br/>
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-300">캐치하세요</span>
+          <h2 className="text-3xl md:text-5xl font-black text-white leading-[1.2] tracking-tighter mb-8">
+            <span className="text-blue-500">T</span>rends & <span className="text-blue-500">R</span>esearch <span className="text-slate-500">in</span> <span className="text-blue-500">A</span>nesthesiology <br/>
+            <span className="text-blue-500">C</span>utting-edge <span className="text-blue-500">K</span>nowledge
           </h2>
-          <p className="text-lg text-slate-400 font-medium leading-relaxed max-w-2xl mb-10">
+          <p className="text-lg text-slate-400 font-medium leading-relaxed max-w-2xl mb-12">
             수많은 논문의 홍수 속에서 마취통증의학 연구자에게 꼭 필요한 핵심 정보만 골라냅니다. 
-            Gemini AI가 제공하는 실시간 임상 요약으로 지식 습득의 효율을 극대화하세요.
+            TRACK은 Gemini AI를 통해 실시간 임상 요약을 제공하여 지식 습득의 효율을 극대화합니다.
           </p>
           
-          <a 
-            href="https://www.youtube.com/@hjpainfree" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="inline-flex items-center space-x-3 bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-2xl font-black transition-all shadow-xl shadow-red-900/40 group"
-          >
-            <svg className="w-6 h-6 transition-transform group-hover:scale-110" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-            </svg>
-            <span>마취사냥꾼 YouTube 채널 바로가기</span>
-          </a>
+
         </div>
       </div>
 
@@ -208,7 +197,7 @@ const App: React.FC = () => {
                 <div className="absolute top-0 left-0 w-24 h-24 border-8 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
               </div>
               <div className="text-center animate-pulse">
-                <p className="text-slate-900 font-black text-2xl tracking-tight">PubMed 라이브 동기화 중...</p>
+                <p className="text-slate-900 font-black text-2xl tracking-tight">PubMed 실시간 동기화 중...</p>
                 <p className="text-slate-400 text-sm mt-2 font-medium">상위 저널의 신규 논문을 AI가 분석하고 있습니다.</p>
               </div>
             </div>

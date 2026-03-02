@@ -44,15 +44,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-700 to-slate-900 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-lg transform rotate-3">
-                AH
+              <div className="w-10 h-10 bg-slate-900 rounded-lg flex items-center justify-center text-white font-black text-xs shadow-lg border border-white/10">
+                TRACK
               </div>
               <div className="leading-tight">
-                <h1 className="text-lg font-black text-slate-900 tracking-tight">
-                  마취<span className="text-blue-600">사냥꾼</span>
+                <h1 className="text-lg font-black text-slate-900 tracking-tighter">
+                  <span className="text-blue-600">T</span>RACK
                 </h1>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest hidden sm:block">
-                  Anesthesia Hunter
+                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-[0.2em] hidden sm:block">
+                  Anesthesiology Research
                 </p>
               </div>
             </div>
@@ -85,22 +85,23 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-12">
           <div className="space-y-4">
             <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center text-white font-bold text-sm uppercase">
-                AH
+              <div className="w-10 h-10 bg-white/5 rounded-lg flex items-center justify-center text-white font-black text-[10px] border border-white/10">
+                TRACK
               </div>
-              <h3 className="text-white font-black tracking-tight">마취사냥꾼 (Anesthesia Hunter)</h3>
+              <h3 className="text-white font-black tracking-tight">TRACK</h3>
             </div>
-            <p className="text-sm leading-relaxed max-w-sm">
-              대한민국 마취통증의학 연구자들이 최신 의학 지식을 더 빠르고 효율적으로 사냥하듯 습득할 수 있도록 돕는 AI 기반 학술 큐레이션 서비스입니다.
+            <p className="text-xs leading-relaxed max-w-sm text-slate-500">
+              Trends & Research in Anesthesiology Cutting-edge Knowledge. <br/>
+              대한민국 마취통증의학 연구자들이 최신 의학 지식을 더 빠르고 효율적으로 습득할 수 있도록 돕는 AI 기반 학술 큐레이션 서비스입니다.
             </p>
           </div>
           
           <div className="text-right flex flex-col justify-end space-y-4">
-            <div className="flex items-center justify-end space-x-6 text-sm font-bold">
+            <div className="flex items-center justify-end space-x-6 text-xs font-bold">
               <a href="#" className="hover:text-white transition-colors">원천 데이터(NCBI)</a>
             </div>
-            <div className="text-xs space-y-1">
-              <p>© {new Date().getFullYear()} 마취사냥꾼. All rights reserved.</p>
+            <div className="text-[10px] space-y-1">
+              <p>© {new Date().getFullYear()} TRACK. All rights reserved.</p>
               <p className="text-slate-500">
                 Developer: 서울대학교병원 마취통증의학과 이호진 (hjpainfree@snu.ac.kr)
               </p>

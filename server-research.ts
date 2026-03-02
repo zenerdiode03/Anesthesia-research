@@ -214,3 +214,157 @@ Return your analysis as a JSON array of objects with keys: pmid, category, clini
     };
   });
 }
+
+export async function fetchKeywordAnalysis(apiKey: string) {
+  console.log("Starting advanced keyword analysis (last 2 years)...");
+  
+  // 1. Search PMIDs for Original Articles in the last 2 years
+  const end = new Date();
+  const start = new Date();
+  start.setFullYear(end.getFullYear() - 2); 
+  
+  const term = `${buildJournalQuery()} AND ("${ymd(start)}"[dp] : "${ymd(end)}"[dp]) AND "Journal Article"[pt] NOT "Review"[pt] NOT "Letter"[pt]`;
+  const searchParams = new URLSearchParams({
+    db: "pubmed",
+    retmode: "json",
+    retmax: "300", // Reduced for maximum reliability and speed
+    sort: "relevance", 
+    term,
+  });
+  
+  const searchUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?${searchParams.toString()}`;
+  const searchTxt = await ncbiFetch(searchUrl);
+  const searchJson = JSON.parse(searchTxt);
+  const pmids = (searchJson?.esearchresult?.idlist ?? []) as string[];
+  
+  if (pmids.length === 0) return [];
+
+  // 2. Fetch Articles and Extract MeSH Major Topics in chunks
+  const chunkSize = 200;
+  const keywordCounts: Record<string, number> = {};
+  const textForGemini: string[] = [];
+
+  // Stop list for non-essential terms
+  const STOP_LIST = new Set([
+    'Humans', 'Male', 'Female', 'Adult', 'Middle Aged', 'Aged', 'Aged, 80 and over',
+    'Retrospective Studies', 'Prospective Studies', 'Randomized Controlled Trial',
+    'Case Reports', 'Comparative Study', 'Cohort Studies', 'Follow-Up Studies',
+    'Treatment Outcome', 'Double-Blind Method', 'Single-Blind Method', 'Placebos',
+    'Animals', 'Rats', 'Mice', 'Cross-Sectional Studies', 'Pilot Projects',
+    'Statistics as Topic', 'Time Factors', 'Risk Factors', 'Quality of Life',
+    'Anesthesia', 'Anesthesiology', 'Surgery', 'Patient Safety'
+  ]);
+
+  for (let i = 0; i < pmids.length; i += chunkSize) {
+    const chunk = pmids.slice(i, i + chunkSize);
+    const fetchParams = new URLSearchParams({
+      db: "pubmed",
+      retmode: "xml",
+      id: chunk.join(","),
+    });
+    const fetchUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?${fetchParams.toString()}`;
+    
+    try {
+      const xml = await ncbiFetch(fetchUrl);
+      const obj = parser.parse(xml);
+      const articles = ensureArray<any>(obj?.PubmedArticleSet?.PubmedArticle);
+
+      articles.forEach((a: any) => {
+        const medline = a?.MedlineCitation;
+        const article = medline?.Article;
+        const title = extractText(article?.ArticleTitle);
+        const abstract = ensureArray<any>(article?.Abstract?.AbstractText)
+          .map(p => typeof p === 'string' ? p : extractText(p))
+          .join(' ');
+        
+        // Collect a subset for Gemini (first 50 articles with abstracts)
+        if (title && textForGemini.length < 50) {
+          textForGemini.push(`Title: ${title}\nAbstract: ${abstract.slice(0, 300)}...`);
+        }
+
+        // Extract MeSH Major Topics with Subheadings
+        const meshHeadings = ensureArray<any>(medline?.MeshHeadingList?.MeshHeading);
+        meshHeadings.forEach(mh => {
+          const descriptor = mh.DescriptorName;
+          const isMajor = descriptor?.["@_MajorTopicYN"] === "Y";
+          const term = extractText(descriptor).trim();
+
+          if (isMajor && term && !STOP_LIST.has(term)) {
+            // Handle Subheadings
+            const qualifiers = ensureArray<any>(mh.QualifierName);
+            if (qualifiers.length > 0) {
+              qualifiers.forEach(q => {
+                const subTerm = extractText(q).trim();
+                const fullTerm = `${term} / ${subTerm}`;
+                keywordCounts[fullTerm] = (keywordCounts[fullTerm] || 0) + 1.5;
+              });
+            } else {
+              keywordCounts[term] = (keywordCounts[term] || 0) + 1;
+            }
+          }
+        });
+      });
+    } catch (err) {
+      console.error(`Error fetching chunk ${i}:`, err);
+      continue;
+    }
+  }
+
+  // 3. Use Gemini for Title/Abstract based extraction (NLP approach)
+  const genAI = new GoogleGenAI({ apiKey });
+  const model = genAI.models.generateContent({
+    model: 'gemini-3-flash-preview',
+    contents: `Act as a bibliometric expert in anesthesiology. 
+Analyze the following research titles and abstracts from the last 2 years.
+Extract the top 15 most significant CLINICAL RESEARCH TOPICS.
+Focus on:
+- Drugs (e.g., Dexmedetomidine, Sugammadex)
+- Techniques/Procedures (e.g., Regional Anesthesia, ERAS, Goal-directed therapy)
+- Specific Outcomes (e.g., Opioid-sparing, PONV, Delirium)
+- Devices (e.g., Videolaryngoscopy)
+
+DO NOT include study designs (RCT, Retrospective), population tags (Adult, Male), or generic terms (Anesthesia, Surgery).
+
+Articles:
+${textForGemini.slice(0, 40).join('\n\n')}
+
+Return a JSON array of objects with keys: "topic" (string) and "relevance_score" (number 1-10).`,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            topic: { type: Type.STRING },
+            relevance_score: { type: Type.NUMBER }
+          },
+          required: ["topic", "relevance_score"]
+        }
+      }
+    }
+  });
+
+  try {
+    const response = await model;
+    const geminiTopics: any[] = JSON.parse(response.text || "[]");
+    
+    // Merge Gemini topics into keywordCounts
+    geminiTopics.forEach(gt => {
+      const topic = gt.topic;
+      // Boost score based on relevance
+      keywordCounts[topic] = (keywordCounts[topic] || 0) + (gt.relevance_score * 2);
+    });
+  } catch (e) {
+    console.error("Gemini keyword extraction failed:", e);
+  }
+
+  // 4. Final Sort and Filter
+  const topKeywords = Object.entries(keywordCounts)
+    .map(([text, count]) => ({ text, count: Math.round(count) }))
+    .filter(k => k.text.length > 3)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10);
+
+  return topKeywords;
+}
