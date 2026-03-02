@@ -81,10 +81,7 @@ const App: React.FC = () => {
         <div className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-slate-600/20 blur-3xl"></div>
         
         <div className="relative z-10 max-w-3xl">
-          <div className="inline-flex items-center space-x-2 bg-amber-500/10 border border-amber-500/20 px-3 py-1.5 rounded-full text-amber-400 text-[10px] font-black uppercase tracking-[0.2em] mb-6 shadow-lg shadow-amber-900/10">
-            <Cookie className="w-3.5 h-3.5" />
-            <span>RESEARCH SNACKING</span>
-          </div>
+
           <h2 className="text-3xl md:text-5xl font-black text-white leading-[1.2] tracking-tighter mb-8">
             <span className="text-blue-500">T</span>rends & <span className="text-blue-500">R</span>esearch <span className="text-slate-500">in</span> <span className="text-blue-500">A</span>nesthesiology <br/>
             <span className="text-blue-500">C</span>utting-edge <span className="text-blue-500">K</span>nowledge
@@ -103,19 +100,19 @@ const App: React.FC = () => {
         <div className="bg-slate-100 p-1.5 rounded-2xl flex items-center shadow-inner">
           <button 
             onClick={() => setViewMode('live')}
-            className={`px-8 py-3 rounded-xl text-sm font-black transition-all ${viewMode === 'live' ? 'bg-white text-blue-600 shadow-md' : 'text-slate-500 hover:text-slate-700'}`}
+            className={`px-8 py-3 rounded-xl text-base font-black transition-all ${viewMode === 'live' ? 'bg-white text-blue-600 shadow-md' : 'text-slate-500 hover:text-slate-700'}`}
           >
             실시간 피드
           </button>
           <button 
             onClick={() => setViewMode('weeklyList')}
-            className={`px-8 py-3 rounded-xl text-sm font-black transition-all ${viewMode === 'weeklyList' ? 'bg-white text-blue-600 shadow-md' : 'text-slate-500 hover:text-slate-700'}`}
+            className={`px-8 py-3 rounded-xl text-base font-black transition-all ${viewMode === 'weeklyList' ? 'bg-white text-blue-600 shadow-md' : 'text-slate-500 hover:text-slate-700'}`}
           >
             주간 출간 리스트
           </button>
           <button 
             onClick={() => setViewMode('guideline')}
-            className={`px-8 py-3 rounded-xl text-sm font-black transition-all ${viewMode === 'guideline' ? 'bg-white text-emerald-600 shadow-md' : 'text-slate-500 hover:text-slate-700'}`}
+            className={`px-8 py-3 rounded-xl text-base font-black transition-all ${viewMode === 'guideline' ? 'bg-white text-emerald-600 shadow-md' : 'text-slate-500 hover:text-slate-700'}`}
           >
             최신 가이드라인 소개
           </button>
@@ -138,22 +135,22 @@ const App: React.FC = () => {
                   </div>
                 </div>
               </div>
-              <p className="text-slate-500 text-sm font-medium">마취통증의학 주요 저널의 최신 연구 성과를 실시간으로 확인하세요.</p>
-              <p className="text-blue-600 text-[11px] font-bold mt-1">
+              <p className="text-slate-500 text-base font-medium">마취통증의학 주요 저널의 최신 연구 성과를 실시간으로 확인하세요.</p>
+              <p className="text-blue-600 text-sm font-bold mt-2">
                 SCHOLAR 버튼을 누르면 Google scholar로 들어갑니다. 이를 통해 개인 google 계정에서 논문을 보관하실 수 있습니다.
               </p>
             </div>
             
             <div className="bg-slate-50/50 border border-slate-100 rounded-[2rem] p-6">
               <div className="flex items-center space-x-2 mb-4">
-                <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
-                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">모니터링 중인 저널 목록</h4>
+                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">모니터링 중인 저널 목록</h4>
               </div>
               <div className="flex flex-wrap gap-2">
                 {(Object.keys(JOURNALS) as JournalName[]).map((name) => (
                   <span
                     key={name}
-                    className="px-3 py-1.5 bg-white border border-slate-100 rounded-lg text-[10px] font-bold text-slate-600 shadow-sm"
+                    className="px-4 py-2 bg-white border border-slate-100 rounded-lg text-xs font-bold text-slate-600 shadow-sm"
                   >
                     {JOURNALS[name].shortName}
                   </span>
