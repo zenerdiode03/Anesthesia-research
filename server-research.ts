@@ -56,27 +56,27 @@ function ymd(d: Date) {
 
 async function ncbiFetch(baseUrl: string, params: URLSearchParams) {
   const apiKey = process.env.NCBI_API_KEY;
-  // Always append API key to URL if present, as it's a common requirement
-  const urlWithKey = new URL(baseUrl);
   if (apiKey) {
-    urlWithKey.searchParams.set('api_key', apiKey);
+    params.append('api_key', apiKey);
   }
 
-  // Use POST for complex queries to avoid URL length limits
-  const options: RequestInit = {
-    method: 'POST',
-    headers: { 
-      'User-Agent': 'AnesthesiaResearchHub/1.0.0',
-      'Content-Type': 'application/x-www-form-urlencoded'
-    },
-    body: params.toString() // Explicitly convert to string for body
-  };
+  const queryString = params.toString();
+  const url = `${baseUrl}?${queryString}`;
 
-  console.log(`[NCBI] Fetching ${urlWithKey.toString()} (POST)`);
+  console.log(`[NCBI] Fetching ${baseUrl} (GET)`);
 
   try {
-    const response = await fetch(urlWithKey.toString(), options);
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'AnesthesiaResearchHub/1.0.0' }
+    });
+    
     if (!response.ok) {
+      // If GET fails with 414 (URI Too Long) or 404, try POST as fallback
+      if (response.status === 414 || response.status === 404) {
+        console.warn(`[NCBI] GET request failed (${response.status}). Retrying with POST...`);
+        return await ncbiFetchPost(baseUrl, params);
+      }
+      
       const text = await response.text();
       console.error(`[NCBI] Error ${response.status}: ${text.slice(0, 500)}`);
       throw new Error(`NCBI request failed (${response.status}): ${response.statusText}`);
@@ -86,6 +86,24 @@ async function ncbiFetch(baseUrl: string, params: URLSearchParams) {
     console.error(`[NCBI] Network error: ${error.message}`);
     throw error;
   }
+}
+
+async function ncbiFetchPost(baseUrl: string, params: URLSearchParams) {
+  const options: RequestInit = {
+    method: 'POST',
+    headers: { 
+      'User-Agent': 'AnesthesiaResearchHub/1.0.0',
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    body: params.toString()
+  };
+
+  const response = await fetch(baseUrl, options);
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`NCBI POST request failed (${response.status}): ${response.statusText} - ${text.slice(0, 100)}`);
+  }
+  return await response.text();
 }
 
 const parser = new XMLParser({
