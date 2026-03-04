@@ -9,10 +9,11 @@ let aiInstance: GoogleGenAI | null = null;
 function getAI() {
   if (!aiInstance) {
     // Try process.env first (injected by Vite define), then fallback to import.meta.env
-    const apiKey = (process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY)?.trim();
+    const rawKey = (process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY || '');
+    const apiKey = rawKey.trim().replace(/['"]/g, '');
     
     if (!apiKey || apiKey === 'undefined' || apiKey === 'null' || apiKey.length < 10) {
-      throw new Error("GEMINI_API_KEY is not configured or invalid. Please set a valid key in Vercel Environment Variables.");
+      throw new Error("GEMINI_API_KEY is not configured or invalid. Please ensure the API key is correctly set in the environment.");
     }
     aiInstance = new GoogleGenAI({ apiKey });
   }
@@ -22,11 +23,12 @@ function getAI() {
 /**
  * Maps PubMed journal strings to our internal JournalName type.
  */
-export async function fetchLatestResearch(journal?: JournalName, customRange?: { start: Date, end: Date }): Promise<Paper[]> {
+export async function fetchLatestResearch(journal?: JournalName, customRange?: { start: Date, end: Date }, force: boolean = false): Promise<Paper[]> {
   // If it's the default request (no specific journal, no custom range), use the server-side daily cache
   if (!journal && !customRange) {
     try {
-      const response = await fetch('/api/research/latest');
+      const url = `/api/research/latest${force ? '?force=true' : ''}`;
+      const response = await fetch(url);
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || `Server error: ${response.statusText}`);
@@ -46,12 +48,14 @@ export async function fetchLatestResearch(journal?: JournalName, customRange?: {
 
   try {
     // 0. Check Cache
-    const cached = localStorage.getItem(cacheKey);
-    if (cached) {
-      const { timestamp, data } = JSON.parse(cached);
-      if (Date.now() - timestamp < CACHE_DURATION) {
-        console.log(`Using cached data for ${journal || 'all'} (${rangeSuffix})`);
-        return data;
+    if (!force) {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const { timestamp, data } = JSON.parse(cached);
+        if (Date.now() - timestamp < CACHE_DURATION) {
+          console.log(`Using cached data for ${journal || 'all'} (${rangeSuffix})`);
+          return data;
+        }
       }
     }
 
@@ -172,7 +176,7 @@ Structure the response with high-impact professional formatting:
     let response;
     try {
         response = await ai.models.generateContent({
-            model: 'gemini-3-pro-preview',
+            model: 'gemini-3.1-pro-preview',
             contents: prompt,
             config: {
                 thinkingConfig: { thinkingBudget: 4000 }

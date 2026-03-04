@@ -107,17 +107,25 @@ async function startServer() {
 
   // Keyword Analysis API
   app.get('/api/research/keywords', async (req, res) => {
+    const force = req.query.force === 'true';
     const now = Date.now();
-    if (keywordCache && lastKeywordUpdate && (now - lastKeywordUpdate < SIX_MONTHS)) {
+    
+    if (!force && keywordCache && lastKeywordUpdate && (now - lastKeywordUpdate < SIX_MONTHS)) {
       console.log(`[${new Date().toISOString()}] Serving KEYWORD CACHE`);
       return res.json(keywordCache);
     }
 
     try {
-      console.log(`[${new Date().toISOString()}] Keyword Cache expired or missing. Fetching...`);
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) throw new Error("GEMINI_API_KEY missing");
+      console.log(`[${new Date().toISOString()}] Keyword Cache ${force ? 'FORCED refresh' : 'expired or missing'}. Fetching...`);
       
+      const rawKey = process.env.GEMINI_API_KEY || process.env.API_KEY || '';
+      const apiKey = rawKey.trim().replace(/['"]/g, '');
+      
+      if (!apiKey || apiKey === 'undefined' || apiKey === 'null' || apiKey.length < 10) {
+        throw new Error("GEMINI_API_KEY missing or invalid");
+      }
+      
+      console.log(`[${new Date().toISOString()}] Keyword analysis starting (Key length: ${apiKey.length})`);
       const startTime = Date.now();
       const data = await fetchKeywordAnalysis(apiKey);
       const duration = (Date.now() - startTime) / 1000;
@@ -135,9 +143,10 @@ async function startServer() {
   // Daily Research API
   app.get('/api/research/latest', async (req, res) => {
     const today = new Date().toISOString().split('T')[0];
+    const force = req.query.force === 'true';
     
-    // If we have a cache for today, return it
-    if (dailyResearchCache && lastCacheDate === today) {
+    // If we have a cache for today and not forcing, return it
+    if (!force && dailyResearchCache && lastCacheDate === today) {
       console.log(`[${new Date().toISOString()}] Serving DAILY CACHE for ${today}`);
       return res.json(dailyResearchCache);
     }
@@ -149,14 +158,18 @@ async function startServer() {
 
     try {
       isFetching = true;
-      console.log(`[${new Date().toISOString()}] Cache expired or missing for ${today}. Starting extraction...`);
+      console.log(`[${new Date().toISOString()}] Cache ${force ? 'FORCED refresh' : 'expired or missing'} for ${today}. Starting extraction...`);
       
-      const apiKey = process.env.GEMINI_API_KEY;
+      // Try multiple possible environment variable names and clean the result
+      const rawKey = process.env.GEMINI_API_KEY || process.env.API_KEY || '';
+      const apiKey = rawKey.trim().replace(/['"]/g, '');
       
-      if (!apiKey) {
-        throw new Error("GEMINI_API_KEY is not configured on the server.");
+      if (!apiKey || apiKey === 'undefined' || apiKey === 'null' || apiKey.length < 10) {
+        console.error(`[${new Date().toISOString()}] Invalid API key detected. Length: ${apiKey.length}`);
+        throw new Error("GEMINI_API_KEY is not configured or invalid on the server. Please check your environment variables.");
       }
 
+      console.log(`[${new Date().toISOString()}] Daily extraction starting (Key length: ${apiKey.length}, starts with: ${apiKey.slice(0, 3)}...)`);
       const data = await fetchAndProcessResearch(apiKey);
       
       dailyResearchCache = data;
@@ -166,7 +179,13 @@ async function startServer() {
       res.json(data);
     } catch (error: any) {
       console.error('Daily extraction error:', error);
-      res.status(500).json({ error: error.message || "Failed to extract daily research" });
+      // Return a cleaner error message if it's an API key issue
+      const errorMsg = error.message || "";
+      if (errorMsg.includes("API key not valid") || errorMsg.includes("API_KEY_INVALID")) {
+        res.status(401).json({ error: "The Gemini API key configured on the server is invalid. Please update it in the environment settings." });
+      } else {
+        res.status(500).json({ error: errorMsg || "Failed to extract daily research" });
+      }
     } finally {
       isFetching = false;
     }

@@ -34,11 +34,11 @@ const App: React.FC = () => {
     return { start: lastMonday, end: lastSunday };
   };
 
-  const loadPapers = useCallback(async (journalName?: JournalName) => {
+  const loadPapers = useCallback(async (journalName?: JournalName, force: boolean = false) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchLatestResearch(journalName === 'All' as any ? undefined : journalName);
+      const data = await fetchLatestResearch(journalName === 'All' as any ? undefined : journalName, undefined, force);
       setPapers(data);
     } catch (err: any) {
       console.error("Error loading research feed:", err);
@@ -48,12 +48,12 @@ const App: React.FC = () => {
     }
   }, []);
 
-  const loadWeeklyList = async () => {
+  const loadWeeklyList = async (force: boolean = false) => {
     setIsWeeklyLoading(true);
     setError(null);
     try {
       const range = getLastWeekRange();
-      const data = await fetchLatestResearch(undefined, range);
+      const data = await fetchLatestResearch(undefined, range, force);
       setWeeklyPapers(data);
     } catch (err: any) {
       console.error("Error loading weekly list:", err);
@@ -134,23 +134,33 @@ const App: React.FC = () => {
       {viewMode === 'live' ? (
         <>
           <div className="flex flex-col gap-8 mb-12">
-            <div className="flex flex-col space-y-1">
-              <div className="flex items-center space-x-2">
-                <h3 className="text-2xl font-black text-slate-900 tracking-tight">실시간 연구 피드</h3>
-                <div className="group relative">
-                  <svg className="w-4 h-4 text-slate-300 cursor-help hover:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-64 p-3 bg-slate-800 text-white text-[11px] rounded-xl shadow-xl z-50 leading-relaxed">
-                    <p className="font-bold text-blue-400 mb-1">업데이트 안내</p>
-                    최근 7일간 주요 저널에 등재된 신규 논문 30개를 보여줍니다. 데이터는 24시간마다 자동으로 갱신되어 최신 상태를 유지합니다.
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+              <div className="flex flex-col space-y-1">
+                <div className="flex items-center space-x-2">
+                  <h3 className="text-2xl font-black text-slate-900 tracking-tight">실시간 연구 피드</h3>
+                  <div className="group relative">
+                    <svg className="w-4 h-4 text-slate-300 cursor-help hover:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-64 p-3 bg-slate-800 text-white text-[11px] rounded-xl shadow-xl z-50 leading-relaxed">
+                      <p className="font-bold text-blue-400 mb-1">업데이트 안내</p>
+                      최근 7일간 주요 저널에 등재된 신규 논문 30개를 보여줍니다. 데이터는 24시간마다 자동으로 갱신되어 최신 상태를 유지합니다.
+                    </div>
                   </div>
                 </div>
+                <p className="text-slate-500 text-base font-medium">마취통증의학 주요 저널의 최신 연구 성과를 실시간으로 확인하세요.</p>
               </div>
-              <p className="text-slate-500 text-base font-medium">마취통증의학 주요 저널의 최신 연구 성과를 실시간으로 확인하세요.</p>
-              <p className="text-blue-600 text-sm font-bold mt-2">
-                SCHOLAR 버튼을 누르면 Google scholar로 들어갑니다. 이를 통해 개인 google 계정에서 논문을 보관하실 수 있습니다.
-              </p>
+
+              <button 
+                onClick={() => loadPapers(undefined, true)}
+                disabled={loading}
+                className="flex items-center justify-center space-x-2 px-6 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-black text-slate-700 hover:bg-slate-50 hover:border-blue-200 hover:text-blue-600 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed group"
+              >
+                <svg className={`w-4 h-4 ${loading ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <span>강제 업데이트</span>
+              </button>
             </div>
             
             <div className="bg-slate-50/50 border border-slate-100 rounded-[2rem] p-6">
@@ -248,10 +258,22 @@ const App: React.FC = () => {
           <div className="bg-white rounded-[3rem] border border-slate-200 shadow-xl overflow-hidden">
             <div className="bg-slate-900 px-8 py-12 md:px-16 text-white text-center relative">
               <h3 className="text-3xl font-black mb-4">주간 출간 리스트</h3>
-              <p className="text-slate-400 font-medium">
+              <p className="text-slate-400 font-medium mb-6">
                 {weekRange.start.toLocaleDateString()} ~ {weekRange.end.toLocaleDateString()}
               </p>
-              <div className="mt-6 flex flex-col items-center space-y-3">
+              
+              <div className="flex flex-col items-center space-y-4">
+                <button 
+                  onClick={() => loadWeeklyList(true)}
+                  disabled={isWeeklyLoading}
+                  className="flex items-center space-x-2 px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-2xl text-sm font-black text-white transition-all disabled:opacity-50 group"
+                >
+                  <svg className={`w-4 h-4 ${isWeeklyLoading ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  <span>리스트 강제 업데이트</span>
+                </button>
+
                 <div className="inline-flex items-center px-4 py-2 bg-blue-600/20 border border-blue-500/30 rounded-full text-blue-400 text-xs font-black uppercase tracking-widest">
                   Last 7 Days Research
                 </div>
@@ -277,7 +299,7 @@ const App: React.FC = () => {
                     </div>
                   </div>
                   <button 
-                    onClick={loadWeeklyList}
+                    onClick={() => loadWeeklyList()}
                     className="px-6 py-2 bg-red-600 text-white text-[10px] font-black rounded-xl hover:bg-red-700 transition-all uppercase tracking-widest"
                   >
                     Retry

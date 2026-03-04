@@ -29,7 +29,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <div className="flex items-center space-x-6">
               <div className="hidden lg:flex flex-col items-end mr-2">
                 <span className="text-xs font-black text-green-600 uppercase tracking-tighter">Live from PubMed</span>
-                <span className="text-[10px] text-slate-400 font-medium">Updated every 24h</span>
+                <span className="text-[10px] text-slate-400 font-medium">Daily Update at 07:00 KST</span>
               </div>
             </div>
           </div>
