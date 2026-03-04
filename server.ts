@@ -28,7 +28,7 @@ async function startServer() {
   const SERVER_CACHE_DURATION = 60 * 60 * 1000; // 1 hour server-side cache
 
   // PubMed Proxy Route
-  app.get('/api/pubmed', async (req, res) => {
+  app.get('/proxy/pubmed', async (req, res) => {
     const targetUrl = req.query.url as string;
     if (!targetUrl) {
       return res.status(400).send('Missing url parameter');

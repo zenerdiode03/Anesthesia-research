@@ -116,7 +116,7 @@ export async function ncbiGET(url: string, retries = 2, delay = 1000) {
         clearTimeout(timeoutId);
       } else {
         // Proxy fetch on client
-        const proxyUrl = `/api/pubmed?url=${encodeURIComponent(url)}`;
+        const proxyUrl = `/proxy/pubmed?url=${encodeURIComponent(url)}`;
         res = await fetch(proxyUrl, { cache: "no-store" });
       }
       
