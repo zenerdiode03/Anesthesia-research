@@ -63,32 +63,33 @@ async function ncbiFetch(baseUrl: string, params: URLSearchParams) {
   const queryString = params.toString();
   const url = `${baseUrl}?${queryString}`;
 
-  console.log(`[NCBI] Fetching ${baseUrl} (GET)`);
+  // Mask API key for logging
+  const logUrl = url.replace(/api_key=[^&]+/, 'api_key=***');
+  console.log(`[NCBI-v2] Fetching ${logUrl} (GET)`);
 
   try {
     const response = await fetch(url, {
-      headers: { 'User-Agent': 'AnesthesiaResearchHub/1.0.0' }
+      headers: { 
+        'User-Agent': 'AnesthesiaResearchHub/1.0.0',
+        'Accept': 'application/json, application/xml, text/plain'
+      }
     });
     
     if (!response.ok) {
-      // If GET fails with 414 (URI Too Long) or 404, try POST as fallback
-      if (response.status === 414 || response.status === 404) {
-        console.warn(`[NCBI] GET request failed (${response.status}). Retrying with POST...`);
-        return await ncbiFetchPost(baseUrl, params);
-      }
-      
-      const text = await response.text();
-      console.error(`[NCBI] Error ${response.status}: ${text.slice(0, 500)}`);
-      throw new Error(`NCBI request failed (${response.status}): ${response.statusText}`);
+      console.warn(`[NCBI-v2] GET request failed (${response.status}). Retrying with POST...`);
+      // Fallback to POST for any error, just in case
+      return await ncbiFetchPost(baseUrl, params);
     }
     return await response.text();
   } catch (error: any) {
-    console.error(`[NCBI] Network error: ${error.message}`);
-    throw error;
+    console.error(`[NCBI-v2] GET Network error: ${error.message}. Retrying with POST...`);
+    // Fallback to POST on network error too
+    return await ncbiFetchPost(baseUrl, params);
   }
 }
 
 async function ncbiFetchPost(baseUrl: string, params: URLSearchParams) {
+  console.log(`[NCBI-v2] Retrying with POST to ${baseUrl}`);
   const options: RequestInit = {
     method: 'POST',
     headers: { 
@@ -98,12 +99,19 @@ async function ncbiFetchPost(baseUrl: string, params: URLSearchParams) {
     body: params.toString()
   };
 
-  const response = await fetch(baseUrl, options);
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`NCBI POST request failed (${response.status}): ${response.statusText} - ${text.slice(0, 100)}`);
+  try {
+    const response = await fetch(baseUrl, options);
+    if (!response.ok) {
+      const text = await response.text();
+      // Log the first 200 chars of error to see if it's HTML (Vercel 404)
+      console.error(`[NCBI-v2] POST Error ${response.status}: ${text.slice(0, 200)}`);
+      throw new Error(`NCBI POST request failed (${response.status}): ${response.statusText}`);
+    }
+    return await response.text();
+  } catch (error: any) {
+    console.error(`[NCBI-v2] POST Network error: ${error.message}`);
+    throw error;
   }
-  return await response.text();
 }
 
 const parser = new XMLParser({
