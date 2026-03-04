@@ -9,20 +9,11 @@ import { fetchLatestResearch, generateDeepSummary } from './services/geminiServi
 import { JOURNALS } from './constants';
 import { Cookie } from 'lucide-react';
 
-declare global {
-  interface Window {
-    aistudio?: {
-      hasSelectedApiKey: () => Promise<boolean>;
-      openSelectKey: () => Promise<void>;
-    };
-  }
-}
-
 const App: React.FC = () => {
   const [papers, setPapers] = useState<Paper[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [needsApiKey, setNeedsApiKey] = useState(false);
+  const [hasApiKey, setHasApiKey] = useState<boolean>(true);
   
   const [viewMode, setViewMode] = useState<'live' | 'weeklyList' | 'guideline'>('live');
   const [weeklyPapers, setWeeklyPapers] = useState<Paper[]>([]);
@@ -44,21 +35,19 @@ const App: React.FC = () => {
     return { start: lastMonday, end: lastSunday };
   };
 
-  const loadPapers = useCallback(async (journalName?: JournalName, force: boolean = false) => {
+  const loadPapers = useCallback(async (journalName?: JournalName) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchLatestResearch(journalName === 'All' as any ? undefined : journalName, undefined, force);
+      const data = await fetchLatestResearch(journalName === 'All' as any ? undefined : journalName);
       setPapers(data);
-      setNeedsApiKey(false);
     } catch (err: any) {
       console.error("Error loading research feed:", err);
-      const errorMessage = err.message || "연구 데이터를 불러오는 중 오류가 발생했습니다.";
-      setError(errorMessage);
-      
-      if (errorMessage.includes('API key not valid') || errorMessage.includes('Requested entity was not found')) {
-        setNeedsApiKey(true);
+      const msg = err.message || "";
+      if (msg.includes('API key') || msg.includes('INVALID_ARGUMENT') || msg.includes('API_KEY_INVALID')) {
+        setHasApiKey(false);
       }
+      setError(err.message || "연구 데이터를 불러오는 중 오류가 발생했습니다.");
     } finally {
       setLoading(false);
     }
@@ -71,49 +60,76 @@ const App: React.FC = () => {
       const range = getLastWeekRange();
       const data = await fetchLatestResearch(undefined, range);
       setWeeklyPapers(data);
-      setNeedsApiKey(false);
     } catch (err: any) {
       console.error("Error loading weekly list:", err);
-      const errorMessage = err.message || "주간 리스트를 불러오는 중 오류가 발생했습니다.";
-      setError(errorMessage);
-      
-      if (errorMessage.includes('API key not valid') || errorMessage.includes('Requested entity was not found')) {
-        setNeedsApiKey(true);
+      const msg = err.message || "";
+      if (msg.includes('API key') || msg.includes('INVALID_ARGUMENT') || msg.includes('API_KEY_INVALID')) {
+        setHasApiKey(false);
       }
+      setError(err.message || "주간 리스트를 불러오는 중 오류가 발생했습니다.");
     } finally {
       setIsWeeklyLoading(false);
     }
   };
 
-  const handleSelectKey = async () => {
-    if (window.aistudio?.openSelectKey) {
+  useEffect(() => {
+    if (viewMode === 'live') {
+      loadPapers();
+    } else {
+      loadWeeklyList();
+    }
+  }, [viewMode, loadPapers]);
+
+  const weekRange = getLastWeekRange();
+
+  useEffect(() => {
+    const checkApiKey = async () => {
+      if (window.aistudio) {
+        const hasKey = await window.aistudio.hasSelectedApiKey();
+        setHasApiKey(hasKey);
+      }
+    };
+    checkApiKey();
+  }, []);
+
+  const handleOpenKeySelector = async () => {
+    if (window.aistudio) {
       await window.aistudio.openSelectKey();
-      setNeedsApiKey(false);
-      // Retry loading
-      if (viewMode === 'live') loadPapers(undefined, true);
+      setHasApiKey(true);
+      // Reload data after key selection
+      if (viewMode === 'live') loadPapers();
       else loadWeeklyList();
     }
   };
 
-  useEffect(() => {
-    const checkAndLoad = async () => {
-      if (window.aistudio?.hasSelectedApiKey) {
-        const hasKey = await window.aistudio.hasSelectedApiKey();
-        if (!hasKey && (process.env.GEMINI_API_KEY === 'undefined' || !process.env.GEMINI_API_KEY)) {
-          setNeedsApiKey(true);
-        }
-      }
-      
-      if (viewMode === 'live') {
-        loadPapers();
-      } else {
-        loadWeeklyList();
-      }
-    };
-    checkAndLoad();
-  }, [viewMode, loadPapers]);
-
-  const weekRange = getLastWeekRange();
+  if (!hasApiKey) {
+    return (
+      <Layout>
+        <div className="flex flex-col items-center justify-center py-40 space-y-8 animate-in fade-in duration-500">
+          <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center">
+            <Cookie className="w-10 h-10 text-blue-600" />
+          </div>
+          <div className="text-center max-w-md">
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight mb-4">Gemini API Key 설정이 필요합니다</h2>
+            <p className="text-slate-500 font-medium mb-8">
+              ATHENA의 고성능 AI 분석 기능을 사용하기 위해 유료 <strong>Gemini API Key</strong> 선택이 필요합니다. 
+              아래 버튼을 눌러 유효한 키를 선택해 주세요.
+            </p>
+            <button 
+              onClick={handleOpenKeySelector}
+              className="px-10 py-4 bg-blue-600 text-white rounded-2xl font-black hover:bg-blue-700 transition-all shadow-xl shadow-blue-200"
+            >
+              Gemini API Key 선택하기
+            </button>
+            <p className="mt-4 text-[10px] text-slate-400">
+              * 유료 프로젝트(Paid Project)의 API 키를 선택해야 정상적인 분석이 가능합니다. <br/>
+              <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noopener noreferrer" className="underline">결제 및 요금 정책 확인</a>
+            </p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -150,37 +166,6 @@ const App: React.FC = () => {
       </div>
 
       {/* View Mode Switcher */}
-      {needsApiKey && (
-        <div className="mb-12 p-8 bg-blue-50 border border-blue-100 rounded-[2.5rem] text-center shadow-xl shadow-blue-900/5 animate-in fade-in zoom-in duration-500">
-          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-            </svg>
-          </div>
-          <h3 className="text-xl font-black text-slate-900 mb-2">Gemini API 키 설정이 필요합니다</h3>
-          <p className="text-slate-600 mb-8 max-w-md mx-auto font-medium">
-            최신 연구 분석을 위해 유효한 Gemini API 키가 필요합니다. 
-            아래 버튼을 눌러 API 키를 선택하거나 설정해 주세요.
-          </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <button 
-              onClick={handleSelectKey}
-              className="px-10 py-4 bg-blue-600 text-white rounded-2xl font-black hover:bg-blue-700 transition-all shadow-lg shadow-blue-900/20"
-            >
-              API 키 선택하기
-            </button>
-            <a 
-              href="https://ai.google.dev/gemini-api/docs/billing" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-blue-600 font-bold text-sm hover:underline"
-            >
-              결제 및 키 발급 안내
-            </a>
-          </div>
-        </div>
-      )}
-
       <div className="flex items-center justify-center mb-12">
         <div className="bg-slate-100 p-1.5 rounded-2xl flex items-center shadow-inner">
           <button 
@@ -214,9 +199,9 @@ const App: React.FC = () => {
                   <svg className="w-4 h-4 text-slate-300 cursor-help hover:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-72 p-3 bg-slate-800 text-white text-[11px] rounded-xl shadow-xl z-50 leading-relaxed">
+                  <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-64 p-3 bg-slate-800 text-white text-[11px] rounded-xl shadow-xl z-50 leading-relaxed">
                     <p className="font-bold text-blue-400 mb-1">업데이트 안내</p>
-                    최근 7일간 주요 저널에 등재된 신규 논문 30개를 보여줍니다. 데이터는 <span className="text-emerald-400 font-bold">한국시간 오전 7시</span>를 기준으로 매일 자동 갱신됩니다.
+                    최근 7일간 주요 저널에 등재된 신규 논문 30개를 보여줍니다. 데이터는 24시간마다 자동으로 갱신되어 최신 상태를 유지합니다.
                   </div>
                 </div>
               </div>
@@ -257,8 +242,16 @@ const App: React.FC = () => {
                 <div className="mt-2 text-[10px] text-red-500 font-mono opacity-50 flex flex-col space-y-1">
                   <div>{new Date().toLocaleTimeString()} | {window.location.hostname}</div>
                   {error.includes('API key') && (
-                    <div className="bg-red-100/50 p-1 rounded">
-                      Detected Key: {process.env.GEMINI_API_KEY ? `${process.env.GEMINI_API_KEY.slice(0, 4)}...${process.env.GEMINI_API_KEY.slice(-4)}` : 'Not Found'}
+                    <div className="mt-4 flex flex-col space-y-2">
+                      <div className="bg-red-100/50 p-2 rounded">
+                        Gemini API Key가 유효하지 않거나 설정되지 않았습니다. (유료 키 권장)
+                      </div>
+                      <button 
+                        onClick={handleOpenKeySelector}
+                        className="w-full py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-all"
+                      >
+                        Gemini API Key 다시 선택하기
+                      </button>
                     </div>
                   )}
                 </div>

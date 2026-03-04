@@ -54,3 +54,12 @@ export interface ResearchStats {
   byCategory: { name: string; value: number }[];
   byJournal: { name: string; value: number }[];
 }
+
+declare global {
+  interface Window {
+    aistudio: {
+      hasSelectedApiKey: () => Promise<boolean>;
+      openSelectKey: () => Promise<void>;
+    };
+  }
+}

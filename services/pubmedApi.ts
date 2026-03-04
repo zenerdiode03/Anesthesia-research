@@ -91,7 +91,7 @@ function ymd(d: Date) {
   return `${y}/${m}/${da}`;
 }
 
-async function ncbiGET(url: string, retries = 2, delay = 1000) {
+export async function ncbiGET(url: string, retries = 2, delay = 1000) {
   const isServer = typeof window === 'undefined';
   
   for (let i = 0; i <= retries; i++) {
@@ -203,12 +203,12 @@ export async function esearchGuidelines(retmax = 50) {
   return (json?.esearchresult?.idlist ?? []) as string[];
 }
 
-const parser = new XMLParser({
+export const parser = new XMLParser({
   ignoreAttributes: false,
   attributeNamePrefix: "@_",
 });
 
-function extractText(node: any): string {
+export function extractText(node: any): string {
   if (node == null) return "";
   if (typeof node === "string") return node;
   if (typeof node === "number") return String(node);
@@ -216,7 +216,7 @@ function extractText(node: any): string {
   return "";
 }
 
-function ensureArray<T>(x: any): T[] {
+export function ensureArray<T>(x: any): T[] {
   if (!x) return [];
   return Array.isArray(x) ? x : [x];
 }

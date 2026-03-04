@@ -3,7 +3,6 @@ import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import { fetchAndProcessResearch, fetchKeywordAnalysis } from './server-research';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -103,65 +102,6 @@ async function startServer() {
   app.get('/api/stats/visitors', (req, res) => {
     const today = new Date().toISOString().split('T')[0];
     res.json({ count: visitorCounts[today] || 0 });
-  });
-
-  // Keyword Analysis API
-  app.get('/api/research/keywords', async (req, res) => {
-    const now = Date.now();
-    if (keywordCache && lastKeywordUpdate && (now - lastKeywordUpdate < SIX_MONTHS)) {
-      console.log(`[${new Date().toISOString()}] Serving KEYWORD CACHE`);
-      return res.json(keywordCache);
-    }
-
-    try {
-      console.log(`[${new Date().toISOString()}] Keyword Cache expired or missing. Fetching...`);
-      
-      const startTime = Date.now();
-      const data = await fetchKeywordAnalysis();
-      const duration = (Date.now() - startTime) / 1000;
-      console.log(`[${new Date().toISOString()}] Keyword analysis completed in ${duration}s`);
-      
-      keywordCache = data;
-      lastKeywordUpdate = now;
-      res.json(data);
-    } catch (error: any) {
-      console.error('Keyword analysis extraction error:', error);
-      res.status(500).json({ error: "Failed to fetch keyword analysis" });
-    }
-  });
-
-  // Daily Research API
-  app.get('/api/research/latest', async (req, res) => {
-    const today = new Date().toISOString().split('T')[0];
-    
-    // If we have a cache for today, return it
-    if (dailyResearchCache && lastCacheDate === today) {
-      console.log(`[${new Date().toISOString()}] Serving DAILY CACHE for ${today}`);
-      return res.json(dailyResearchCache);
-    }
-
-    // If already fetching, wait or return error (to prevent multiple simultaneous Gemini calls)
-    if (isFetching) {
-      return res.status(503).json({ error: "Data is being extracted by another user. Please try again in a moment." });
-    }
-
-    try {
-      isFetching = true;
-      console.log(`[${new Date().toISOString()}] Cache expired or missing for ${today}. Starting extraction...`);
-      
-      const data = await fetchAndProcessResearch();
-      
-      dailyResearchCache = data;
-      lastCacheDate = today;
-      
-      console.log(`[${new Date().toISOString()}] Extraction complete and cached for ${today}`);
-      res.json(data);
-    } catch (error: any) {
-      console.error('Daily extraction error:', error);
-      res.status(500).json({ error: error.message || "Failed to extract daily research" });
-    } finally {
-      isFetching = false;
-    }
   });
 
   // Vite middleware for development

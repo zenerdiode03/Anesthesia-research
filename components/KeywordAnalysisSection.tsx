@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList } from 'recharts';
 import { Hash, Info } from 'lucide-react';
+import { fetchKeywordAnalysis } from '../services/geminiService';
 
 interface KeywordData {
   text: string;
@@ -18,16 +19,11 @@ const KeywordAnalysisSection: React.FC = () => {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch('/api/research/keywords');
-        if (response.ok) {
-          const result = await response.json();
-          setData(result);
-        } else {
-          setError('데이터를 불러오는 중 오류가 발생했습니다. (HTTP ' + response.status + ')');
-        }
-      } catch (err) {
+        const result = await fetchKeywordAnalysis();
+        setData(result);
+      } catch (err: any) {
         console.error('Failed to fetch keyword analysis:', err);
-        setError('서버와 통신하는 중 오류가 발생했습니다.');
+        setError(err.message || '데이터를 분석하는 중 오류가 발생했습니다.');
       } finally {
         setLoading(false);
       }
