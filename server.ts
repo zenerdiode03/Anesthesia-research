@@ -160,16 +160,29 @@ async function startServer() {
       isFetching = true;
       console.log(`[${new Date().toISOString()}] Cache ${force ? 'FORCED refresh' : 'expired or missing'} for ${today}. Starting extraction...`);
       
-      // Try multiple possible environment variable names and clean the result
-      const rawKey = process.env.GEMINI_API_KEY || process.env.API_KEY || '';
-      const apiKey = rawKey.trim().replace(/['"]/g, '');
+      // Try multiple possible environment variable names
+      let rawKey = process.env.GEMINI_API_KEY;
+      let source = 'GEMINI_API_KEY';
+      
+      if (!rawKey) {
+        rawKey = process.env.GOOGLE_API_KEY;
+        source = 'GOOGLE_API_KEY';
+      }
+      if (!rawKey) {
+        rawKey = process.env.API_KEY;
+        source = 'API_KEY';
+      }
+
+      const apiKey = (rawKey || '').trim().replace(/['"]/g, '');
       
       if (!apiKey || apiKey === 'undefined' || apiKey === 'null' || apiKey.length < 10) {
-        console.error(`[${new Date().toISOString()}] Invalid API key detected. Length: ${apiKey.length}`);
+        console.error(`[${new Date().toISOString()}] Invalid API key detected. Source: ${source}, Length: ${apiKey?.length}`);
         throw new Error("GEMINI_API_KEY is not configured or invalid on the server. Please check your environment variables.");
       }
 
-      console.log(`[${new Date().toISOString()}] Daily extraction starting (Key length: ${apiKey.length}, starts with: ${apiKey.slice(0, 3)}...)`);
+      const maskedKey = `${apiKey.slice(0, 4)}...${apiKey.slice(-4)}`;
+      console.log(`[${new Date().toISOString()}] Daily extraction starting using ${source} (${maskedKey}, length: ${apiKey.length})`);
+      
       const data = await fetchAndProcessResearch(apiKey);
       
       dailyResearchCache = data;
