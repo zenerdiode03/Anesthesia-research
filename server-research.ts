@@ -54,12 +54,36 @@ function ymd(d: Date) {
   return `${y}/${m}/${da}`;
 }
 
-async function ncbiFetch(url: string) {
-  const response = await fetch(url, {
-    headers: { 'User-Agent': 'AnesthesiaResearchHub/1.0.0' }
-  });
-  if (!response.ok) throw new Error(`NCBI request failed: ${response.statusText}`);
-  return await response.text();
+async function ncbiFetch(baseUrl: string, params: URLSearchParams) {
+  const apiKey = process.env.NCBI_API_KEY;
+  if (apiKey) {
+    params.append('api_key', apiKey);
+  }
+
+  // Use POST to avoid URL length limits
+  const options: RequestInit = {
+    method: 'POST',
+    headers: { 
+      'User-Agent': 'AnesthesiaResearchHub/1.0.0',
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    body: params
+  };
+
+  console.log(`[NCBI] Fetching ${baseUrl} (POST)`);
+
+  try {
+    const response = await fetch(baseUrl, options);
+    if (!response.ok) {
+      const text = await response.text();
+      console.error(`[NCBI] Error ${response.status}: ${text.slice(0, 500)}`);
+      throw new Error(`NCBI request failed (${response.status}): ${response.statusText} - ${text.slice(0, 100)}`);
+    }
+    return await response.text();
+  } catch (error: any) {
+    console.error(`[NCBI] Network error: ${error.message}`);
+    throw error;
+  }
 }
 
 const parser = new XMLParser({
@@ -97,8 +121,8 @@ export async function fetchAndProcessResearch(apiKey: string) {
     term,
   });
   
-  const searchUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?${searchParams.toString()}`;
-  const searchTxt = await ncbiFetch(searchUrl);
+  const searchUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi`;
+  const searchTxt = await ncbiFetch(searchUrl, searchParams);
   const searchJson = JSON.parse(searchTxt);
   const pmids = (searchJson?.esearchresult?.idlist ?? []) as string[];
   
@@ -110,8 +134,8 @@ export async function fetchAndProcessResearch(apiKey: string) {
     retmode: "xml",
     id: pmids.join(","),
   });
-  const fetchUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?${fetchParams.toString()}`;
-  const xml = await ncbiFetch(fetchUrl);
+  const fetchUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi`;
+  const xml = await ncbiFetch(fetchUrl, fetchParams);
   const obj = parser.parse(xml);
   const articles = ensureArray<any>(obj?.PubmedArticleSet?.PubmedArticle);
 
@@ -232,8 +256,8 @@ export async function fetchKeywordAnalysis(apiKey: string) {
     term,
   });
   
-  const searchUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?${searchParams.toString()}`;
-  const searchTxt = await ncbiFetch(searchUrl);
+  const searchUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi`;
+  const searchTxt = await ncbiFetch(searchUrl, searchParams);
   const searchJson = JSON.parse(searchTxt);
   const pmids = (searchJson?.esearchresult?.idlist ?? []) as string[];
   
@@ -262,10 +286,10 @@ export async function fetchKeywordAnalysis(apiKey: string) {
       retmode: "xml",
       id: chunk.join(","),
     });
-    const fetchUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?${fetchParams.toString()}`;
+    const fetchUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi`;
     
     try {
-      const xml = await ncbiFetch(fetchUrl);
+      const xml = await ncbiFetch(fetchUrl, fetchParams);
       const obj = parser.parse(xml);
       const articles = ensureArray<any>(obj?.PubmedArticleSet?.PubmedArticle);
 
