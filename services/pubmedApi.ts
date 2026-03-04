@@ -106,11 +106,14 @@ export async function ncbiGET(url: string, retries = 2, delay = 1000) {
         }
         
         // Use global fetch (Node 18+)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        
         res = await fetch(finalUrl.toString(), {
           headers: { 'User-Agent': 'AnesthesiaResearchHub/1.0.0' },
-          // @ts-ignore - AbortSignal.timeout is Node 18+
-          signal: AbortSignal.timeout(15000)
+          signal: controller.signal
         });
+        clearTimeout(timeoutId);
       } else {
         // Proxy fetch on client
         const proxyUrl = `/api/pubmed?url=${encodeURIComponent(url)}`;

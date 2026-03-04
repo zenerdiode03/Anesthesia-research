@@ -336,8 +336,16 @@ const App: React.FC = () => {
                     <div className="mt-2 text-[10px] text-red-500 font-mono opacity-50 flex flex-col space-y-1">
                       <div>{new Date().toLocaleTimeString()} | {window.location.hostname}</div>
                       {error.includes('API key') && (
-                        <div className="bg-red-100/50 p-1 rounded">
-                          Detected Key: {process.env.GEMINI_API_KEY ? `${process.env.GEMINI_API_KEY.slice(0, 4)}...${process.env.GEMINI_API_KEY.slice(-4)}` : 'Not Found'}
+                        <div className="mt-4 flex flex-col space-y-2">
+                          <div className="bg-red-100/50 p-2 rounded text-[10px] font-bold text-red-800">
+                            Gemini API Key가 유효하지 않거나 설정되지 않았습니다. (유료 키 권장)
+                          </div>
+                          <button 
+                            onClick={handleOpenKeySelector}
+                            className="w-full py-2 bg-blue-600 text-white rounded-lg font-black hover:bg-blue-700 transition-all uppercase tracking-widest text-[9px]"
+                          >
+                            Gemini API Key 다시 선택하기
+                          </button>
                         </div>
                       )}
                     </div>
