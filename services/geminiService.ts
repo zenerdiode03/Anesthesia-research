@@ -1,29 +1,47 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
 import { Paper, JournalName } from "../types";
-import { esearchPMIDsByEDAT, efetchArticles, normalizeJournalName, esearchGuidelines, PUBMED_JOURNALS, ncbiGET } from "./pubmedApi";
+import { esearchPMIDsByEDAT, efetchArticles, normalizeJournalName, esearchGuidelines } from "./pubmedApi";
 
 // Lazy initialization to prevent crash if API key is missing at load time
-function getAI() {
-  // Try API_KEY (user selected) first, then GEMINI_API_KEY (platform provided)
-  const apiKey = (process.env.API_KEY || process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY)?.trim();
-  
-  const isValidFormat = apiKey && apiKey.startsWith('AIza') && apiKey.length > 20;
+let aiInstance: GoogleGenAI | null = null;
 
-  if (!isValidFormat || apiKey === 'undefined' || apiKey === 'null') {
-    throw new Error("Gemini API key is not configured or invalid. Please select an API key using the 'Set API Key' button.");
+function getAI() {
+  if (!aiInstance) {
+    // Try process.env first (injected by Vite define), then fallback to import.meta.env
+    const apiKey = (process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY)?.trim();
+    
+    if (!apiKey || apiKey === 'undefined' || apiKey === 'null' || apiKey.length < 10) {
+      throw new Error("GEMINI_API_KEY is not configured or invalid. Please set a valid key in Vercel Environment Variables.");
+    }
+    aiInstance = new GoogleGenAI({ apiKey });
   }
-  return new GoogleGenAI({ apiKey });
+  return aiInstance;
 }
 
 /**
  * Maps PubMed journal strings to our internal JournalName type.
  */
 export async function fetchLatestResearch(journal?: JournalName, customRange?: { start: Date, end: Date }): Promise<Paper[]> {
+  // If it's the default request (no specific journal, no custom range), use the server-side daily cache
+  if (!journal && !customRange) {
+    try {
+      const response = await fetch('/api/research/latest');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Server error: ${response.statusText}`);
+      }
+      return await response.json();
+    } catch (error: any) {
+      console.error("Failed to fetch daily research from server:", error);
+      // Fallback to client-side if server fails
+    }
+  }
+
   const rangeSuffix = customRange 
     ? `${customRange.start.toISOString().split('T')[0]}_${customRange.end.toISOString().split('T')[0]}`
     : 'default';
-  const cacheKey = `research_cache_v8_${journal || 'all'}_${rangeSuffix}`;
+  const cacheKey = `research_cache_v7_${journal || 'all'}_${rangeSuffix}`;
   const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
   try {
@@ -136,125 +154,6 @@ Return your analysis as a JSON array of objects with keys: pmid, category, clini
   }
 }
 
-export async function fetchKeywordAnalysis(): Promise<{ text: string, count: number }[]> {
-  const cacheKey = 'keyword_analysis_cache_v1';
-  const CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; // 1 week
-
-  try {
-    const cached = localStorage.getItem(cacheKey);
-    if (cached) {
-      const { timestamp, data } = JSON.parse(cached);
-      if (Date.now() - timestamp < CACHE_DURATION) {
-        return data;
-      }
-    }
-
-    // 1. Search PMIDs from last 1 year
-    const end = new Date();
-    const start = new Date();
-    start.setFullYear(end.getFullYear() - 1);
-    
-    const term = `(${PUBMED_JOURNALS.map(j => `"${j.ta}"[Journal]`).join(' OR ')}) AND ("${start.getFullYear()}/${start.getMonth()+1}/${start.getDate()}"[dp] : "${end.getFullYear()}/${end.getMonth()+1}/${end.getDate()}"[dp])`;
-    
-    const searchParams = new URLSearchParams({
-      db: "pubmed",
-      retmode: "json",
-      retmax: "100",
-      sort: "relevance",
-      term,
-    });
-    
-    const searchUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?${searchParams.toString()}`;
-    const searchTxt = await ncbiGET(searchUrl);
-    const searchJson = JSON.parse(searchTxt);
-    const pmids = (searchJson?.esearchresult?.idlist ?? []) as string[];
-    
-    if (pmids.length === 0) return [];
-
-    // 2. Fetch and parse
-    const keywordCounts: Record<string, number> = {};
-    const textForGemini: string[] = [];
-    const chunkSize = 50;
-    
-    const STOP_LIST = new Set([
-      'Humans', 'Male', 'Female', 'Adult', 'Middle Aged', 'Aged', 'Child', 'Infant',
-      'Retrospective Studies', 'Prospective Studies', 'Randomized Controlled Trial',
-      'Case Reports', 'Comparative Study', 'Cohort Studies', 'Follow-Up Studies',
-      'Treatment Outcome', 'Double-Blind Method', 'Single-Blind Method', 'Placebos',
-      'Animals', 'Rats', 'Mice', 'Cross-Sectional Studies', 'Pilot Projects',
-      'Statistics as Topic', 'Time Factors', 'Risk Factors', 'Quality of Life',
-      'Anesthesia', 'Anesthesiology', 'Surgery', 'Patient Safety'
-    ]);
-
-    for (let i = 0; i < pmids.length; i += chunkSize) {
-      const chunk = pmids.slice(i, i + chunkSize);
-      const articles = await efetchArticles(chunk);
-      
-      articles.forEach(a => {
-        if (a.title && textForGemini.length < 40) {
-          textForGemini.push(`Title: ${a.title}\nAbstract: ${a.abstract?.slice(0, 300)}...`);
-        }
-        
-        // Use tags from pubmedApi as base keywords
-        a.tags.forEach(tag => {
-          keywordCounts[tag] = (keywordCounts[tag] || 0) + 1;
-        });
-      });
-    }
-
-    // 3. Use Gemini for NLP extraction
-    const ai = getAI();
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: `Act as a bibliometric expert in anesthesiology. 
-Analyze the following research titles and abstracts from the last year.
-Extract the top 15 most significant CLINICAL RESEARCH TOPICS.
-Focus on: Drugs, Techniques, Specific Outcomes, Devices.
-DO NOT include study designs or generic terms.
-
-Articles:
-${textForGemini.join('\n\n')}
-
-Return a JSON array of objects with keys: "topic" (string) and "relevance_score" (number 1-10).`,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              topic: { type: Type.STRING },
-              relevance_score: { type: Type.NUMBER }
-            },
-            required: ["topic", "relevance_score"]
-          }
-        }
-      }
-    });
-
-    const geminiTopics: any[] = JSON.parse(response.text || "[]");
-    geminiTopics.forEach(gt => {
-      keywordCounts[gt.topic] = (keywordCounts[gt.topic] || 0) + (gt.relevance_score * 2);
-    });
-
-    const topKeywords = Object.entries(keywordCounts)
-      .map(([text, count]) => ({ text, count: Math.round(count) }))
-      .filter(k => k.text.length > 3 && !STOP_LIST.has(k.text))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 10);
-
-    localStorage.setItem(cacheKey, JSON.stringify({
-      timestamp: Date.now(),
-      data: topKeywords
-    }));
-
-    return topKeywords;
-  } catch (error) {
-    console.error("Failed to fetch keyword analysis:", error);
-    return [];
-  }
-}
-
 export async function generateDeepSummary(paper: Paper): Promise<string> {
     const prompt = `As a world-class academic anesthesiologist and researcher, provide a "Deep Dive" clinical critique for the following article.
     
@@ -273,7 +172,7 @@ Structure the response with high-impact professional formatting:
     let response;
     try {
         response = await ai.models.generateContent({
-            model: 'gemini-3.1-pro-preview',
+            model: 'gemini-3-pro-preview',
             contents: prompt,
             config: {
                 thinkingConfig: { thinkingBudget: 4000 }

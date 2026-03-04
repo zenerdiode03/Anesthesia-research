@@ -13,7 +13,6 @@ const App: React.FC = () => {
   const [papers, setPapers] = useState<Paper[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [hasApiKey, setHasApiKey] = useState<boolean>(true);
   
   const [viewMode, setViewMode] = useState<'live' | 'weeklyList' | 'guideline'>('live');
   const [weeklyPapers, setWeeklyPapers] = useState<Paper[]>([]);
@@ -43,10 +42,6 @@ const App: React.FC = () => {
       setPapers(data);
     } catch (err: any) {
       console.error("Error loading research feed:", err);
-      const msg = err.message || "";
-      if (msg.includes('API key') || msg.includes('INVALID_ARGUMENT') || msg.includes('API_KEY_INVALID')) {
-        setHasApiKey(false);
-      }
       setError(err.message || "연구 데이터를 불러오는 중 오류가 발생했습니다.");
     } finally {
       setLoading(false);
@@ -62,10 +57,6 @@ const App: React.FC = () => {
       setWeeklyPapers(data);
     } catch (err: any) {
       console.error("Error loading weekly list:", err);
-      const msg = err.message || "";
-      if (msg.includes('API key') || msg.includes('INVALID_ARGUMENT') || msg.includes('API_KEY_INVALID')) {
-        setHasApiKey(false);
-      }
       setError(err.message || "주간 리스트를 불러오는 중 오류가 발생했습니다.");
     } finally {
       setIsWeeklyLoading(false);
@@ -81,55 +72,6 @@ const App: React.FC = () => {
   }, [viewMode, loadPapers]);
 
   const weekRange = getLastWeekRange();
-
-  useEffect(() => {
-    const checkApiKey = async () => {
-      if (window.aistudio) {
-        const hasKey = await window.aistudio.hasSelectedApiKey();
-        setHasApiKey(hasKey);
-      }
-    };
-    checkApiKey();
-  }, []);
-
-  const handleOpenKeySelector = async () => {
-    if (window.aistudio) {
-      await window.aistudio.openSelectKey();
-      setHasApiKey(true);
-      // Reload data after key selection
-      if (viewMode === 'live') loadPapers();
-      else loadWeeklyList();
-    }
-  };
-
-  if (!hasApiKey) {
-    return (
-      <Layout>
-        <div className="flex flex-col items-center justify-center py-40 space-y-8 animate-in fade-in duration-500">
-          <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center">
-            <Cookie className="w-10 h-10 text-blue-600" />
-          </div>
-          <div className="text-center max-w-md">
-            <h2 className="text-2xl font-black text-slate-900 tracking-tight mb-4">Gemini API Key 설정이 필요합니다</h2>
-            <p className="text-slate-500 font-medium mb-8">
-              ATHENA의 고성능 AI 분석 기능을 사용하기 위해 유료 <strong>Gemini API Key</strong> 선택이 필요합니다. 
-              아래 버튼을 눌러 유효한 키를 선택해 주세요.
-            </p>
-            <button 
-              onClick={handleOpenKeySelector}
-              className="px-10 py-4 bg-blue-600 text-white rounded-2xl font-black hover:bg-blue-700 transition-all shadow-xl shadow-blue-200"
-            >
-              Gemini API Key 선택하기
-            </button>
-            <p className="mt-4 text-[10px] text-slate-400">
-              * 유료 프로젝트(Paid Project)의 API 키를 선택해야 정상적인 분석이 가능합니다. <br/>
-              <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noopener noreferrer" className="underline">결제 및 요금 정책 확인</a>
-            </p>
-          </div>
-        </div>
-      </Layout>
-    );
-  }
 
   return (
     <Layout>
@@ -242,16 +184,8 @@ const App: React.FC = () => {
                 <div className="mt-2 text-[10px] text-red-500 font-mono opacity-50 flex flex-col space-y-1">
                   <div>{new Date().toLocaleTimeString()} | {window.location.hostname}</div>
                   {error.includes('API key') && (
-                    <div className="mt-4 flex flex-col space-y-2">
-                      <div className="bg-red-100/50 p-2 rounded">
-                        Gemini API Key가 유효하지 않거나 설정되지 않았습니다. (유료 키 권장)
-                      </div>
-                      <button 
-                        onClick={handleOpenKeySelector}
-                        className="w-full py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-all"
-                      >
-                        Gemini API Key 다시 선택하기
-                      </button>
+                    <div className="bg-red-100/50 p-1 rounded">
+                      Detected Key: {process.env.GEMINI_API_KEY ? `${process.env.GEMINI_API_KEY.slice(0, 4)}...${process.env.GEMINI_API_KEY.slice(-4)}` : 'Not Found'}
                     </div>
                   )}
                 </div>
@@ -336,16 +270,8 @@ const App: React.FC = () => {
                     <div className="mt-2 text-[10px] text-red-500 font-mono opacity-50 flex flex-col space-y-1">
                       <div>{new Date().toLocaleTimeString()} | {window.location.hostname}</div>
                       {error.includes('API key') && (
-                        <div className="mt-4 flex flex-col space-y-2">
-                          <div className="bg-red-100/50 p-2 rounded text-[10px] font-bold text-red-800">
-                            Gemini API Key가 유효하지 않거나 설정되지 않았습니다. (유료 키 권장)
-                          </div>
-                          <button 
-                            onClick={handleOpenKeySelector}
-                            className="w-full py-2 bg-blue-600 text-white rounded-lg font-black hover:bg-blue-700 transition-all uppercase tracking-widest text-[9px]"
-                          >
-                            Gemini API Key 다시 선택하기
-                          </button>
+                        <div className="bg-red-100/50 p-1 rounded">
+                          Detected Key: {process.env.GEMINI_API_KEY ? `${process.env.GEMINI_API_KEY.slice(0, 4)}...${process.env.GEMINI_API_KEY.slice(-4)}` : 'Not Found'}
                         </div>
                       )}
                     </div>

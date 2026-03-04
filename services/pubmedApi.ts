@@ -91,7 +91,7 @@ function ymd(d: Date) {
   return `${y}/${m}/${da}`;
 }
 
-export async function ncbiGET(url: string, retries = 2, delay = 1000) {
+async function ncbiGET(url: string, retries = 2, delay = 1000) {
   const isServer = typeof window === 'undefined';
   
   for (let i = 0; i <= retries; i++) {
@@ -106,17 +106,14 @@ export async function ncbiGET(url: string, retries = 2, delay = 1000) {
         }
         
         // Use global fetch (Node 18+)
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000);
-        
         res = await fetch(finalUrl.toString(), {
           headers: { 'User-Agent': 'AnesthesiaResearchHub/1.0.0' },
-          signal: controller.signal
+          // @ts-ignore - AbortSignal.timeout is Node 18+
+          signal: AbortSignal.timeout(15000)
         });
-        clearTimeout(timeoutId);
       } else {
         // Proxy fetch on client
-        const proxyUrl = `/proxy/pubmed?url=${encodeURIComponent(url)}`;
+        const proxyUrl = `/api/pubmed?url=${encodeURIComponent(url)}`;
         res = await fetch(proxyUrl, { cache: "no-store" });
       }
       
@@ -206,12 +203,12 @@ export async function esearchGuidelines(retmax = 50) {
   return (json?.esearchresult?.idlist ?? []) as string[];
 }
 
-export const parser = new XMLParser({
+const parser = new XMLParser({
   ignoreAttributes: false,
   attributeNamePrefix: "@_",
 });
 
-export function extractText(node: any): string {
+function extractText(node: any): string {
   if (node == null) return "";
   if (typeof node === "string") return node;
   if (typeof node === "number") return String(node);
@@ -219,7 +216,7 @@ export function extractText(node: any): string {
   return "";
 }
 
-export function ensureArray<T>(x: any): T[] {
+function ensureArray<T>(x: any): T[] {
   if (!x) return [];
   return Array.isArray(x) ? x : [x];
 }
