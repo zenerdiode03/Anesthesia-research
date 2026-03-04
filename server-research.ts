@@ -56,28 +56,30 @@ function ymd(d: Date) {
 
 async function ncbiFetch(baseUrl: string, params: URLSearchParams) {
   const apiKey = process.env.NCBI_API_KEY;
+  // Always append API key to URL if present, as it's a common requirement
+  const urlWithKey = new URL(baseUrl);
   if (apiKey) {
-    params.append('api_key', apiKey);
+    urlWithKey.searchParams.set('api_key', apiKey);
   }
 
-  // Use POST to avoid URL length limits
+  // Use POST for complex queries to avoid URL length limits
   const options: RequestInit = {
     method: 'POST',
     headers: { 
       'User-Agent': 'AnesthesiaResearchHub/1.0.0',
       'Content-Type': 'application/x-www-form-urlencoded'
     },
-    body: params
+    body: params.toString() // Explicitly convert to string for body
   };
 
-  console.log(`[NCBI] Fetching ${baseUrl} (POST)`);
+  console.log(`[NCBI] Fetching ${urlWithKey.toString()} (POST)`);
 
   try {
-    const response = await fetch(baseUrl, options);
+    const response = await fetch(urlWithKey.toString(), options);
     if (!response.ok) {
       const text = await response.text();
       console.error(`[NCBI] Error ${response.status}: ${text.slice(0, 500)}`);
-      throw new Error(`NCBI request failed (${response.status}): ${response.statusText} - ${text.slice(0, 100)}`);
+      throw new Error(`NCBI request failed (${response.status}): ${response.statusText}`);
     }
     return await response.text();
   } catch (error: any) {
