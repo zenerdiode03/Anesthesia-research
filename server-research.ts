@@ -1,5 +1,4 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
 import { XMLParser } from "fast-xml-parser";
 
 const PUBMED_JOURNALS = [
@@ -80,8 +79,8 @@ function ensureArray<T>(x: any): T[] {
   return Array.isArray(x) ? x : [x];
 }
 
-export async function fetchAndProcessResearch(apiKey: string) {
-  console.log("Starting daily research extraction...");
+export async function fetchAndProcessResearch() {
+  console.log("Starting daily research extraction (Raw PubMed only)...");
   
   // 1. Search PMIDs
   const end = new Date();
@@ -115,7 +114,7 @@ export async function fetchAndProcessResearch(apiKey: string) {
   const obj = parser.parse(xml);
   const articles = ensureArray<any>(obj?.PubmedArticleSet?.PubmedArticle);
 
-  const rawArticles = articles.map((a: any) => {
+  return articles.map((a: any) => {
     const medline = a?.MedlineCitation;
     const pmid = extractText(medline?.PMID).trim();
     const article = medline?.Article;
@@ -140,7 +139,7 @@ export async function fetchAndProcessResearch(apiKey: string) {
       .filter(Boolean).join(' ');
 
     return {
-      pmid,
+      id: pmid,
       title,
       abstract: abstractText || null,
       journal: journalAbbrev || journalTitle,
@@ -150,73 +149,10 @@ export async function fetchAndProcessResearch(apiKey: string) {
       tags: inferTags(title, abstractText)
     };
   });
-
-  // 3. Enrich with Gemini
-  const genAI = new GoogleGenAI({ apiKey });
-  const model = genAI.models.generateContent({
-    model: 'gemini-3-flash-preview',
-    contents: `Act as an expert clinical research assistant in anesthesiology. 
-I have a list of real research articles recently published on PubMed. 
-Based on the provided titles and abstracts, generate:
-1. A Study Category: "Review" or "Original Article".
-2. A Clinical Impact statement: 1-2 powerful sentences summarizing why this matters at the bedside.
-3. A High-level Summary: 2-3 concise sentences explaining the primary findings.
-4. Keywords: 3-5 relevant medical keywords for indexing.
-
-Articles:
-${rawArticles.map((a, i) => `${i+1}. PMID: ${a.pmid}\nTitle: ${a.title}\nJournal: ${a.journal}\nAbstract: ${a.abstract}`).join('\n\n')}
-
-Return your analysis as a JSON array of objects with keys: pmid, category, clinicalImpact, summary, keywords.`,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.ARRAY,
-        items: {
-          type: Type.OBJECT,
-          properties: {
-            pmid: { type: Type.STRING },
-            category: { type: Type.STRING },
-            clinicalImpact: { type: Type.STRING },
-            summary: { type: Type.STRING },
-            keywords: { type: Type.ARRAY, items: { type: Type.STRING } },
-          },
-          required: ["pmid", "category", "clinicalImpact", "summary", "keywords"]
-        }
-      }
-    }
-  });
-
-  const response = await model;
-  const enrichments: any[] = JSON.parse(response.text || "[]");
-
-  // 4. Merge
-  return rawArticles.map((raw) => {
-    const enrichment = enrichments.find(e => e.pmid === raw.pmid) || { 
-      category: 'Original Article', 
-      clinicalImpact: 'Clinical analysis pending.', 
-      summary: raw.abstract?.slice(0, 200) || 'Detailed abstract not available.',
-      keywords: []
-    };
-
-    return {
-      id: raw.pmid,
-      title: raw.title,
-      authors: raw.authors,
-      journal: raw.journal,
-      date: raw.date,
-      url: raw.url,
-      abstract: raw.abstract,
-      category: enrichment.category,
-      clinicalImpact: enrichment.clinicalImpact,
-      summary: enrichment.summary,
-      keywords: enrichment.keywords,
-      tags: raw.tags
-    };
-  });
 }
 
-export async function fetchKeywordAnalysis(apiKey: string) {
-  console.log("Starting advanced keyword analysis (last 2 years)...");
+export async function fetchKeywordAnalysis() {
+  console.log("Starting advanced keyword analysis (Raw PubMed only)...");
   
   // 1. Search PMIDs for Original Articles in the last 2 years
   const end = new Date();
@@ -310,61 +246,12 @@ export async function fetchKeywordAnalysis(apiKey: string) {
     }
   }
 
-  // 3. Use Gemini for Title/Abstract based extraction (NLP approach)
-  const genAI = new GoogleGenAI({ apiKey });
-  const model = genAI.models.generateContent({
-    model: 'gemini-3-flash-preview',
-    contents: `Act as a bibliometric expert in anesthesiology. 
-Analyze the following research titles and abstracts from the last 2 years.
-Extract the top 15 most significant CLINICAL RESEARCH TOPICS.
-Focus on:
-- Drugs (e.g., Dexmedetomidine, Sugammadex)
-- Techniques/Procedures (e.g., Regional Anesthesia, ERAS, Goal-directed therapy)
-- Specific Outcomes (e.g., Opioid-sparing, PONV, Delirium)
-- Devices (e.g., Videolaryngoscopy)
-
-DO NOT include study designs (RCT, Retrospective), population tags (Adult, Male), or generic terms (Anesthesia, Surgery).
-
-Articles:
-${textForGemini.slice(0, 40).join('\n\n')}
-
-Return a JSON array of objects with keys: "topic" (string) and "relevance_score" (number 1-10).`,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.ARRAY,
-        items: {
-          type: Type.OBJECT,
-          properties: {
-            topic: { type: Type.STRING },
-            relevance_score: { type: Type.NUMBER }
-          },
-          required: ["topic", "relevance_score"]
-        }
-      }
-    }
-  });
-
-  try {
-    const response = await model;
-    const geminiTopics: any[] = JSON.parse(response.text || "[]");
-    
-    // Merge Gemini topics into keywordCounts
-    geminiTopics.forEach(gt => {
-      const topic = gt.topic;
-      // Boost score based on relevance
-      keywordCounts[topic] = (keywordCounts[topic] || 0) + (gt.relevance_score * 2);
-    });
-  } catch (e) {
-    console.error("Gemini keyword extraction failed:", e);
-  }
-
-  // 4. Final Sort and Filter
+  // 3. Final Sort and Filter
   const topKeywords = Object.entries(keywordCounts)
     .map(([text, count]) => ({ text, count: Math.round(count) }))
     .filter(k => k.text.length > 3)
     .sort((a, b) => b.count - a.count)
-    .slice(0, 10);
+    .slice(0, 15);
 
   return topKeywords;
 }

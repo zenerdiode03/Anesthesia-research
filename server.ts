@@ -115,11 +115,9 @@ async function startServer() {
 
     try {
       console.log(`[${new Date().toISOString()}] Keyword Cache expired or missing. Fetching...`);
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) throw new Error("GEMINI_API_KEY missing");
       
       const startTime = Date.now();
-      const data = await fetchKeywordAnalysis(apiKey);
+      const data = await fetchKeywordAnalysis();
       const duration = (Date.now() - startTime) / 1000;
       console.log(`[${new Date().toISOString()}] Keyword analysis completed in ${duration}s`);
       
@@ -151,13 +149,7 @@ async function startServer() {
       isFetching = true;
       console.log(`[${new Date().toISOString()}] Cache expired or missing for ${today}. Starting extraction...`);
       
-      const apiKey = process.env.GEMINI_API_KEY;
-      
-      if (!apiKey) {
-        throw new Error("GEMINI_API_KEY is not configured on the server.");
-      }
-
-      const data = await fetchAndProcessResearch(apiKey);
+      const data = await fetchAndProcessResearch();
       
       dailyResearchCache = data;
       lastCacheDate = today;

@@ -23,25 +23,10 @@ function getAI() {
  * Maps PubMed journal strings to our internal JournalName type.
  */
 export async function fetchLatestResearch(journal?: JournalName, customRange?: { start: Date, end: Date }): Promise<Paper[]> {
-  // If it's the default request (no specific journal, no custom range), use the server-side daily cache
-  if (!journal && !customRange) {
-    try {
-      const response = await fetch('/api/research/latest');
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Server error: ${response.statusText}`);
-      }
-      return await response.json();
-    } catch (error: any) {
-      console.error("Failed to fetch daily research from server:", error);
-      // Fallback to client-side if server fails
-    }
-  }
-
   const rangeSuffix = customRange 
     ? `${customRange.start.toISOString().split('T')[0]}_${customRange.end.toISOString().split('T')[0]}`
     : 'default';
-  const cacheKey = `research_cache_v7_${journal || 'all'}_${rangeSuffix}`;
+  const cacheKey = `research_cache_v8_${journal || 'all'}_${rangeSuffix}`;
   const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
   try {
@@ -55,14 +40,30 @@ export async function fetchLatestResearch(journal?: JournalName, customRange?: {
       }
     }
 
-    // 1. Get real PMIDs from PubMed
-    const pmids = await esearchPMIDsByEDAT(journal, 7, 30, customRange);
-    if (pmids.length === 0) return [];
+    let rawArticles: any[] = [];
 
-    // 2. Fetch real article metadata (Title, Authors, Abstract)
-    const rawArticles = await efetchArticles(pmids);
+    // 1. Get raw articles (either from server proxy or directly from PubMed)
+    if (!journal && !customRange) {
+      // Try server-side raw fetch first for the "latest" feed (it has its own cache)
+      try {
+        const response = await fetch('/api/research/latest');
+        if (response.ok) {
+          rawArticles = await response.json();
+          console.log("Fetched raw articles from server cache");
+        }
+      } catch (e) {
+        console.warn("Server raw fetch failed, falling back to direct PubMed fetch", e);
+      }
+    }
 
-    // 3. Use Gemini to enrich this real data with clinical insights
+    if (rawArticles.length === 0) {
+      // Direct PubMed fetch
+      const pmids = await esearchPMIDsByEDAT(journal, 7, 30, customRange);
+      if (pmids.length === 0) return [];
+      rawArticles = await efetchArticles(pmids);
+    }
+
+    // 2. Use Gemini to enrich this real data with clinical insights
     const prompt = `Act as an expert clinical research assistant in anesthesiology. 
 I have a list of real research articles recently published on PubMed. 
 Based on the provided titles and abstracts, generate:
@@ -72,7 +73,7 @@ Based on the provided titles and abstracts, generate:
 4. Keywords: 3-5 relevant medical keywords for indexing.
 
 Articles:
-${rawArticles.map((a, i) => `${i+1}. PMID: ${a.pmid}\nTitle: ${a.title}\nJournal: ${a.journal}\nAbstract: ${a.abstract}`).join('\n\n')}
+${rawArticles.map((a, i) => `${i+1}. PMID: ${a.pmid || a.id}\nTitle: ${a.title}\nJournal: ${a.journal}\nAbstract: ${a.abstract}`).join('\n\n')}
 
 Return your analysis as a JSON array of objects with keys: pmid, category, clinicalImpact, summary, keywords.`;
 
@@ -116,9 +117,10 @@ Return your analysis as a JSON array of objects with keys: pmid, category, clini
     }
     const enrichments: any[] = JSON.parse(text);
 
-    // 4. Merge real data with AI enrichments
+    // 3. Merge real data with AI enrichments
     const processedArticles = rawArticles.map((raw) => {
-      const enrichment = enrichments.find(e => e.pmid === raw.pmid) || { 
+      const pmid = raw.pmid || raw.id;
+      const enrichment = enrichments.find(e => e.pmid === pmid) || { 
         category: 'Original Article', 
         clinicalImpact: 'Clinical analysis pending.', 
         summary: raw.abstract?.slice(0, 200) || 'Detailed abstract not available.',
@@ -126,7 +128,7 @@ Return your analysis as a JSON array of objects with keys: pmid, category, clini
       };
 
       return {
-        id: raw.pmid,
+        id: pmid,
         title: raw.title,
         authors: raw.authors,
         journal: normalizeJournalName(raw.journalAbbrev || raw.journal),
@@ -141,7 +143,7 @@ Return your analysis as a JSON array of objects with keys: pmid, category, clini
       };
     });
 
-    // 5. Save to Cache
+    // 4. Save to Cache
     localStorage.setItem(cacheKey, JSON.stringify({
       timestamp: Date.now(),
       data: processedArticles
