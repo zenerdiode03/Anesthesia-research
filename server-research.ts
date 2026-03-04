@@ -54,64 +54,17 @@ function ymd(d: Date) {
   return `${y}/${m}/${da}`;
 }
 
-async function ncbiFetch(baseUrl: string, params: URLSearchParams) {
-  const apiKey = process.env.NCBI_API_KEY;
-  if (apiKey) {
-    params.append('api_key', apiKey);
+async function ncbiFetch(url: string) {
+  console.log(`[NCBI] Fetching ${url.replace(/api_key=[^&]+/, 'api_key=***')}`);
+  const response = await fetch(url, {
+    headers: { 'User-Agent': 'AnesthesiaResearchHub/1.0.0' }
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    console.error(`[NCBI] Error ${response.status}: ${text.slice(0, 200)}`);
+    throw new Error(`NCBI request failed (${response.status}): ${response.statusText}`);
   }
-
-  const queryString = params.toString();
-  const url = `${baseUrl}?${queryString}`;
-
-  // Mask API key for logging
-  const logUrl = url.replace(/api_key=[^&]+/, 'api_key=***');
-  console.log(`[NCBI-v2] Fetching ${logUrl} (GET)`);
-
-  try {
-    const response = await fetch(url, {
-      headers: { 
-        'User-Agent': 'AnesthesiaResearchHub/1.0.0',
-        'Accept': 'application/json, application/xml, text/plain'
-      }
-    });
-    
-    if (!response.ok) {
-      console.warn(`[NCBI-v2] GET request failed (${response.status}). Retrying with POST...`);
-      // Fallback to POST for any error, just in case
-      return await ncbiFetchPost(baseUrl, params);
-    }
-    return await response.text();
-  } catch (error: any) {
-    console.error(`[NCBI-v2] GET Network error: ${error.message}. Retrying with POST...`);
-    // Fallback to POST on network error too
-    return await ncbiFetchPost(baseUrl, params);
-  }
-}
-
-async function ncbiFetchPost(baseUrl: string, params: URLSearchParams) {
-  console.log(`[NCBI-v2] Retrying with POST to ${baseUrl}`);
-  const options: RequestInit = {
-    method: 'POST',
-    headers: { 
-      'User-Agent': 'AnesthesiaResearchHub/1.0.0',
-      'Content-Type': 'application/x-www-form-urlencoded'
-    },
-    body: params.toString()
-  };
-
-  try {
-    const response = await fetch(baseUrl, options);
-    if (!response.ok) {
-      const text = await response.text();
-      // Log the first 200 chars of error to see if it's HTML (Vercel 404)
-      console.error(`[NCBI-v2] POST Error ${response.status}: ${text.slice(0, 200)}`);
-      throw new Error(`NCBI POST request failed (${response.status}): ${response.statusText}`);
-    }
-    return await response.text();
-  } catch (error: any) {
-    console.error(`[NCBI-v2] POST Network error: ${error.message}`);
-    throw error;
-  }
+  return await response.text();
 }
 
 const parser = new XMLParser({
@@ -148,9 +101,14 @@ export async function fetchAndProcessResearch(apiKey: string) {
     sort: "pub+date",
     term,
   });
+
+  // Add API Key if available
+  if (process.env.NCBI_API_KEY) {
+    searchParams.append('api_key', process.env.NCBI_API_KEY);
+  }
   
-  const searchUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi`;
-  const searchTxt = await ncbiFetch(searchUrl, searchParams);
+  const searchUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?${searchParams.toString()}`;
+  const searchTxt = await ncbiFetch(searchUrl);
   const searchJson = JSON.parse(searchTxt);
   const pmids = (searchJson?.esearchresult?.idlist ?? []) as string[];
   
@@ -162,8 +120,13 @@ export async function fetchAndProcessResearch(apiKey: string) {
     retmode: "xml",
     id: pmids.join(","),
   });
-  const fetchUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi`;
-  const xml = await ncbiFetch(fetchUrl, fetchParams);
+
+  if (process.env.NCBI_API_KEY) {
+    fetchParams.append('api_key', process.env.NCBI_API_KEY);
+  }
+
+  const fetchUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?${fetchParams.toString()}`;
+  const xml = await ncbiFetch(fetchUrl);
   const obj = parser.parse(xml);
   const articles = ensureArray<any>(obj?.PubmedArticleSet?.PubmedArticle);
 
@@ -283,9 +246,13 @@ export async function fetchKeywordAnalysis(apiKey: string) {
     sort: "relevance", 
     term,
   });
+
+  if (process.env.NCBI_API_KEY) {
+    searchParams.append('api_key', process.env.NCBI_API_KEY);
+  }
   
-  const searchUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi`;
-  const searchTxt = await ncbiFetch(searchUrl, searchParams);
+  const searchUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?${searchParams.toString()}`;
+  const searchTxt = await ncbiFetch(searchUrl);
   const searchJson = JSON.parse(searchTxt);
   const pmids = (searchJson?.esearchresult?.idlist ?? []) as string[];
   
@@ -314,10 +281,15 @@ export async function fetchKeywordAnalysis(apiKey: string) {
       retmode: "xml",
       id: chunk.join(","),
     });
-    const fetchUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi`;
+
+    if (process.env.NCBI_API_KEY) {
+      fetchParams.append('api_key', process.env.NCBI_API_KEY);
+    }
+
+    const fetchUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?${fetchParams.toString()}`;
     
     try {
-      const xml = await ncbiFetch(fetchUrl, fetchParams);
+      const xml = await ncbiFetch(fetchUrl);
       const obj = parser.parse(xml);
       const articles = ensureArray<any>(obj?.PubmedArticleSet?.PubmedArticle);
 
