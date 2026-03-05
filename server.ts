@@ -107,16 +107,15 @@ async function startServer() {
 
   // Keyword Analysis API
   app.get('/api/research/keywords', async (req, res) => {
-    const force = req.query.force === 'true';
     const now = Date.now();
     
-    if (!force && keywordCache && lastKeywordUpdate && (now - lastKeywordUpdate < SIX_MONTHS)) {
+    if (keywordCache && lastKeywordUpdate && (now - lastKeywordUpdate < SIX_MONTHS)) {
       console.log(`[${new Date().toISOString()}] Serving KEYWORD CACHE`);
       return res.json(keywordCache);
     }
 
     try {
-      console.log(`[${new Date().toISOString()}] Keyword Cache ${force ? 'FORCED refresh' : 'expired or missing'}. Fetching...`);
+      console.log(`[${new Date().toISOString()}] Keyword Cache expired or missing. Fetching...`);
       
       const rawKey = process.env.GEMINI_API_KEY || process.env.API_KEY || '';
       const apiKey = rawKey.trim().replace(/['"]/g, '');
@@ -143,22 +142,21 @@ async function startServer() {
   // Daily Research API
   app.get('/api/research/latest', async (req, res) => {
     const today = new Date().toISOString().split('T')[0];
-    const force = req.query.force === 'true';
     
-    // If we have a cache for today and not forcing, return it
-    if (!force && dailyResearchCache && lastCacheDate === today) {
+    // If we have a cache for today, return it
+    if (dailyResearchCache && lastCacheDate === today) {
       console.log(`[${new Date().toISOString()}] Serving DAILY CACHE for ${today}`);
       return res.json(dailyResearchCache);
     }
 
-    // If already fetching, wait or return error (to prevent multiple simultaneous Gemini calls)
+    // If already fetching, wait
     if (isFetching) {
       return res.status(503).json({ error: "Data is being extracted by another user. Please try again in a moment." });
     }
 
     try {
       isFetching = true;
-      console.log(`[${new Date().toISOString()}] Cache ${force ? 'FORCED refresh' : 'expired or missing'} for ${today}. Starting extraction...`);
+      console.log(`[${new Date().toISOString()}] Cache expired or missing for ${today}. Starting extraction...`);
       
       // Try multiple possible environment variable names
       let rawKey = process.env.GEMINI_API_KEY;

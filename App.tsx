@@ -34,11 +34,11 @@ const App: React.FC = () => {
     return { start: lastMonday, end: lastSunday };
   };
 
-  const loadPapers = useCallback(async (journalName?: JournalName, force: boolean = false) => {
+  const loadPapers = useCallback(async (journalName?: JournalName) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchLatestResearch(journalName === 'All' as any ? undefined : journalName, undefined, force);
+      const data = await fetchLatestResearch(journalName === 'All' as any ? undefined : journalName);
       setPapers(data);
     } catch (err: any) {
       console.error("Error loading research feed:", err);
@@ -48,12 +48,12 @@ const App: React.FC = () => {
     }
   }, []);
 
-  const loadWeeklyList = async (force: boolean = false) => {
+  const loadWeeklyList = async () => {
     setIsWeeklyLoading(true);
     setError(null);
     try {
       const range = getLastWeekRange();
-      const data = await fetchLatestResearch(undefined, range, force);
+      const data = await fetchLatestResearch(undefined, range);
       setWeeklyPapers(data);
     } catch (err: any) {
       console.error("Error loading weekly list:", err);
@@ -150,17 +150,6 @@ const App: React.FC = () => {
                 </div>
                 <p className="text-slate-500 text-base font-medium">마취통증의학 주요 저널의 최신 연구 성과를 실시간으로 확인하세요.</p>
               </div>
-
-              <button 
-                onClick={() => loadPapers(undefined, true)}
-                disabled={loading}
-                className="flex items-center justify-center space-x-2 px-6 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-black text-slate-700 hover:bg-slate-50 hover:border-blue-200 hover:text-blue-600 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed group"
-              >
-                <svg className={`w-4 h-4 ${loading ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                <span>강제 업데이트</span>
-              </button>
             </div>
             
             <div className="bg-slate-50/50 border border-slate-100 rounded-[2rem] p-6">

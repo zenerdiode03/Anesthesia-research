@@ -23,11 +23,11 @@ function getAI() {
 /**
  * Maps PubMed journal strings to our internal JournalName type.
  */
-export async function fetchLatestResearch(journal?: JournalName, customRange?: { start: Date, end: Date }, force: boolean = false): Promise<Paper[]> {
+export async function fetchLatestResearch(journal?: JournalName, customRange?: { start: Date, end: Date }): Promise<Paper[]> {
   // If it's the default request (no specific journal, no custom range), use the server-side daily cache
   if (!journal && !customRange) {
     try {
-      const url = `/api/research/latest${force ? '?force=true' : ''}`;
+      const url = `/api/research/latest`;
       const response = await fetch(url);
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -48,14 +48,12 @@ export async function fetchLatestResearch(journal?: JournalName, customRange?: {
 
   try {
     // 0. Check Cache
-    if (!force) {
-      const cached = localStorage.getItem(cacheKey);
-      if (cached) {
-        const { timestamp, data } = JSON.parse(cached);
-        if (Date.now() - timestamp < CACHE_DURATION) {
-          console.log(`Using cached data for ${journal || 'all'} (${rangeSuffix})`);
-          return data;
-        }
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      const { timestamp, data } = JSON.parse(cached);
+      if (Date.now() - timestamp < CACHE_DURATION) {
+        console.log(`Using cached data for ${journal || 'all'} (${rangeSuffix})`);
+        return data;
       }
     }
 
