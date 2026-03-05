@@ -4,22 +4,15 @@ import { XMLParser } from "fast-xml-parser";
 
 const PUBMED_JOURNALS = [
   { label: "Anaesthesia", ta: "Anaesthesia" },
-  { label: "Anaesthesia Critical Care and Pain Medicine", ta: "Anaesth Crit Care Pain Med" },
   { label: "Anesthesia & Analgesia", ta: "Anesth Analg" },
   { label: "Anesthesiology", ta: "Anesthesiology" },
-  { label: "BJA Education", ta: "BJA Educ" },
   { label: "British Journal of Anaesthesia", ta: "Br J Anaesth" },
   { label: "Canadian Journal of Anesthesia", ta: "Can J Anaesth" },
   { label: "European Journal of Anaesthesiology", ta: "Eur J Anaesthesiol" },
-  { label: "Journal of Anesthesia", ta: "J Anesth" },
-  { label: "Journal of Cardiothoracic and Vascular Anesthesia", ta: "J Cardiothorac Vasc Anesth" },
   { label: "Journal of Clinical Anesthesia", ta: "J Clin Anesth" },
-  { label: "Journal of Neurosurgical Anesthesiology", ta: "J Neurosurg Anesthesiol" },
-  { label: "Korean Journal of Anesthesiology", ta: "Korean J Anesthesiol" },
-  { label: "Korean Journal of Pain", ta: "Korean J Pain" },
-  { label: "Paediatric Anaesthesia", ta: "Paediatr Anaesth" },
   { label: "Pain", ta: "Pain" },
   { label: "Regional Anesthesia & Pain Medicine", ta: "Reg Anesth Pain Med" },
+  { label: "Korean Journal of Anesthesiology", ta: "Korean J Anesthesiol" },
 ];
 
 const RULES = [

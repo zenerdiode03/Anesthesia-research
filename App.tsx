@@ -263,17 +263,6 @@ const App: React.FC = () => {
               </p>
               
               <div className="flex flex-col items-center space-y-4">
-                <button 
-                  onClick={() => loadWeeklyList(true)}
-                  disabled={isWeeklyLoading}
-                  className="flex items-center space-x-2 px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-2xl text-sm font-black text-white transition-all disabled:opacity-50 group"
-                >
-                  <svg className={`w-4 h-4 ${isWeeklyLoading ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  <span>리스트 강제 업데이트</span>
-                </button>
-
                 <div className="inline-flex items-center px-4 py-2 bg-blue-600/20 border border-blue-500/30 rounded-full text-blue-400 text-xs font-black uppercase tracking-widest">
                   Last 7 Days Research
                 </div>
