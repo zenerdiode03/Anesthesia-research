@@ -78,6 +78,30 @@ function ensureArray<T>(x: any): T[] {
   return Array.isArray(x) ? x : [x];
 }
 
+async function withRetry<T>(fn: () => Promise<T>, retries = 3, delay = 2000): Promise<T> {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await fn();
+    } catch (err: any) {
+      const isRetryable = 
+        err.message?.includes('503') || 
+        err.message?.includes('high demand') || 
+        err.message?.includes('UNAVAILABLE') ||
+        err.message?.includes('fetch') ||
+        err.name === 'TypeError';
+        
+      if (isRetryable && i < retries - 1) {
+        console.log(`[Gemini] API busy or network error. Retrying in ${delay}ms... (Attempt ${i + 1}/${retries})`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        delay *= 2; // Exponential backoff
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw new Error("Maximum retries reached for Gemini API.");
+}
+
 export async function fetchAndProcessResearch(apiKey: string) {
   console.log("Starting daily research extraction...");
   
@@ -161,9 +185,11 @@ export async function fetchAndProcessResearch(apiKey: string) {
 
   // 3. Enrich with Gemini
   const genAI = new GoogleGenAI({ apiKey });
-  const model = genAI.models.generateContent({
-    model: 'gemini-3-flash-preview',
-    contents: `Act as an expert clinical research assistant in anesthesiology. 
+  
+  const response = await withRetry(async () => {
+    return await genAI.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: `Act as an expert clinical research assistant in anesthesiology. 
 I have a list of real research articles recently published on PubMed. 
 Based on the provided titles and abstracts, generate:
 1. A Study Category: "Review" or "Original Article".
@@ -175,26 +201,26 @@ Articles:
 ${rawArticles.map((a, i) => `${i+1}. PMID: ${a.pmid}\nTitle: ${a.title}\nJournal: ${a.journal}\nAbstract: ${a.abstract}`).join('\n\n')}
 
 Return your analysis as a JSON array of objects with keys: pmid, category, clinicalImpact, summary, keywords.`,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.ARRAY,
-        items: {
-          type: Type.OBJECT,
-          properties: {
-            pmid: { type: Type.STRING },
-            category: { type: Type.STRING },
-            clinicalImpact: { type: Type.STRING },
-            summary: { type: Type.STRING },
-            keywords: { type: Type.ARRAY, items: { type: Type.STRING } },
-          },
-          required: ["pmid", "category", "clinicalImpact", "summary", "keywords"]
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              pmid: { type: Type.STRING },
+              category: { type: Type.STRING },
+              clinicalImpact: { type: Type.STRING },
+              summary: { type: Type.STRING },
+              keywords: { type: Type.ARRAY, items: { type: Type.STRING } },
+            },
+            required: ["pmid", "category", "clinicalImpact", "summary", "keywords"]
+          }
         }
       }
-    }
+    });
   });
 
-  const response = await model;
   const enrichments: any[] = JSON.parse(response.text || "[]");
 
   // 4. Merge
@@ -329,9 +355,12 @@ export async function fetchKeywordAnalysis(apiKey: string) {
 
   // 3. Use Gemini for Title/Abstract based extraction (NLP approach)
   const genAI = new GoogleGenAI({ apiKey });
-  const model = genAI.models.generateContent({
-    model: 'gemini-3-flash-preview',
-    contents: `Act as a bibliometric expert in anesthesiology. 
+  
+  try {
+    const response = await withRetry(async () => {
+      return await genAI.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: `Act as a bibliometric expert in anesthesiology. 
 Analyze the following research titles and abstracts from the last 2 years.
 Extract the top 15 most significant CLINICAL RESEARCH TOPICS.
 Focus on:
@@ -346,24 +375,23 @@ Articles:
 ${textForGemini.slice(0, 40).join('\n\n')}
 
 Return a JSON array of objects with keys: "topic" (string) and "relevance_score" (number 1-10).`,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.ARRAY,
-        items: {
-          type: Type.OBJECT,
-          properties: {
-            topic: { type: Type.STRING },
-            relevance_score: { type: Type.NUMBER }
-          },
-          required: ["topic", "relevance_score"]
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                topic: { type: Type.STRING },
+                relevance_score: { type: Type.NUMBER }
+              },
+              required: ["topic", "relevance_score"]
+            }
+          }
         }
-      }
-    }
-  });
-
-  try {
-    const response = await model;
+      });
+    });
+    
     const geminiTopics: any[] = JSON.parse(response.text || "[]");
     
     // Merge Gemini topics into keywordCounts

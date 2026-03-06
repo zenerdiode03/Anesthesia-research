@@ -19,6 +19,30 @@ function getAI() {
   return aiInstance;
 }
 
+async function withRetry<T>(fn: () => Promise<T>, retries = 3, delay = 2000): Promise<T> {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await fn();
+    } catch (err: any) {
+      const isRetryable = 
+        err.message?.includes('503') || 
+        err.message?.includes('high demand') || 
+        err.message?.includes('UNAVAILABLE') ||
+        err.message?.includes('fetch') ||
+        err.name === 'TypeError';
+        
+      if (isRetryable && i < retries - 1) {
+        console.log(`Gemini API busy or network error. Retrying in ${delay}ms... (Attempt ${i + 1}/${retries})`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        delay *= 2; // Exponential backoff
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw new Error("Maximum retries reached for Gemini API.");
+}
+
 /**
  * Maps PubMed journal strings to our internal JournalName type.
  */
@@ -62,9 +86,9 @@ ${rawArticles.map((a, i) => `${i+1}. PMID: ${a.pmid}\nTitle: ${a.title}\nJournal
 Return your analysis as a JSON array of objects with keys: pmid, category, clinicalImpact, summary, keywords.`;
 
     const ai = getAI();
-    let response;
-    try {
-      response = await ai.models.generateContent({
+    
+    const response = await withRetry(async () => {
+      return await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: prompt,
         config: {
@@ -88,12 +112,7 @@ Return your analysis as a JSON array of objects with keys: pmid, category, clini
           }
         }
       });
-    } catch (err: any) {
-      if (err.message?.includes('fetch') || err.name === 'TypeError') {
-        throw new Error("Google AI 서비스에 연결할 수 없습니다. 네트워크 방화벽이나 VPN 설정을 확인해 주세요. (Failed to fetch Gemini API)");
-      }
-      throw err;
-    }
+    });
 
     const text = response.text;
     if (!text) {
@@ -133,8 +152,11 @@ Return your analysis as a JSON array of objects with keys: pmid, category, clini
     }));
 
     return processedArticles;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Failed to process research feed:", error);
+    if (error.message?.includes('503') || error.message?.includes('high demand')) {
+      throw new Error("현재 AI 서비스 이용자가 많아 일시적으로 응답이 지연되고 있습니다. 잠시 후 다시 시도해 주세요. (Gemini 503: High Demand)");
+    }
     throw error; // Throw error to be handled by UI
   }
 }
@@ -154,23 +176,27 @@ Structure the response with high-impact professional formatting:
 4. TAKE-HOME MESSAGE: The single most important takeaway.`;
 
     const ai = getAI();
-    let response;
+    
     try {
-        response = await ai.models.generateContent({
-            model: 'gemini-3-pro-preview',
-            contents: prompt,
-            config: {
-                thinkingConfig: { thinkingBudget: 4000 }
-            }
+        const response = await withRetry(async () => {
+            return await ai.models.generateContent({
+                model: 'gemini-3-pro-preview',
+                contents: prompt,
+                config: {
+                    thinkingConfig: { thinkingBudget: 4000 }
+                }
+            });
         });
+        return response.text || "Summary generation failed. Please try again.";
     } catch (err: any) {
+        if (err.message?.includes('503') || err.message?.includes('high demand')) {
+            throw new Error("현재 AI 서비스 이용자가 많아 상세 분석이 지연되고 있습니다. 잠시 후 다시 시도해 주세요.");
+        }
         if (err.message?.includes('fetch') || err.name === 'TypeError') {
             throw new Error("Google AI 서비스에 연결할 수 없습니다. (Failed to fetch Gemini API)");
         }
         throw err;
     }
-
-    return response.text || "Summary generation failed. Please try again.";
 }
 
 export async function fetchGuidelines(): Promise<Paper[]> {
