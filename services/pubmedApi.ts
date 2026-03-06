@@ -2,7 +2,7 @@
 import { XMLParser } from "fast-xml-parser";
 import { JournalName } from "../types";
 
-const NCBI_API_KEY = null; // Handled by server-side proxy
+const NCBI_API_KEY = (process.env.NCBI_API_KEY || (import.meta as any).env?.VITE_NCBI_API_KEY)?.trim();
 
 export type JournalSpec = { label: string; ta: string };
 
@@ -91,34 +91,17 @@ function ymd(d: Date) {
   return `${y}/${m}/${da}`;
 }
 
-export async function ncbiGET(url: string, retries = 2, delay = 1000) {
-  const isServer = typeof window === 'undefined';
-  
+async function ncbiGET(url: string, retries = 2, delay = 1000) {
   for (let i = 0; i <= retries; i++) {
     try {
-      let res: any;
-      
-      if (isServer) {
-        // Direct fetch on server
-        const finalUrl = new URL(url);
-        if (process.env.NCBI_API_KEY) {
-          finalUrl.searchParams.set('api_key', process.env.NCBI_API_KEY);
-        }
-        
-        // Use global fetch (Node 18+)
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000);
-        
-        res = await fetch(finalUrl.toString(), {
-          headers: { 'User-Agent': 'AnesthesiaResearchHub/1.0.0' },
-          signal: controller.signal
-        });
-        clearTimeout(timeoutId);
-      } else {
-        // Proxy fetch on client
-        const proxyUrl = `/api/pubmed?url=${encodeURIComponent(url)}`;
-        res = await fetch(proxyUrl, { cache: "no-store" });
+      const finalUrl = new URL(url);
+      if (NCBI_API_KEY) {
+        finalUrl.searchParams.set('api_key', NCBI_API_KEY);
       }
+      
+      const res = await fetch(finalUrl.toString(), {
+        headers: { 'User-Agent': 'AnesthesiaResearchHub/1.0.0' }
+      });
       
       if (res.status === 429) {
         if (i < retries) {
@@ -143,9 +126,6 @@ export async function ncbiGET(url: string, retries = 2, delay = 1000) {
       return await res.text();
     } catch (error: any) {
       if (i === retries) {
-        if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
-          throw new Error("PubMed 데이터 서버(/api/pubmed)에 연결할 수 없습니다. 서버가 실행 중인지 또는 네트워크 상태를 확인해 주세요. (Failed to fetch PubMed Proxy)");
-        }
         throw error;
       }
       console.log(`Fetch error. Retrying in ${delay}ms...`);
@@ -206,12 +186,12 @@ export async function esearchGuidelines(retmax = 50) {
   return (json?.esearchresult?.idlist ?? []) as string[];
 }
 
-export const parser = new XMLParser({
+const parser = new XMLParser({
   ignoreAttributes: false,
   attributeNamePrefix: "@_",
 });
 
-export function extractText(node: any): string {
+function extractText(node: any): string {
   if (node == null) return "";
   if (typeof node === "string") return node;
   if (typeof node === "number") return String(node);
@@ -219,7 +199,7 @@ export function extractText(node: any): string {
   return "";
 }
 
-export function ensureArray<T>(x: any): T[] {
+function ensureArray<T>(x: any): T[] {
   if (!x) return [];
   return Array.isArray(x) ? x : [x];
 }

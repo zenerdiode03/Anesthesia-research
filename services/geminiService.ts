@@ -9,11 +9,10 @@ let aiInstance: GoogleGenAI | null = null;
 function getAI() {
   if (!aiInstance) {
     // Try process.env first (injected by Vite define), then fallback to import.meta.env
-    const rawKey = (process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY || '');
-    const apiKey = rawKey.trim().replace(/['"]/g, '');
+    const apiKey = (process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY)?.trim();
     
     if (!apiKey || apiKey === 'undefined' || apiKey === 'null' || apiKey.length < 10) {
-      throw new Error("GEMINI_API_KEY is not configured or invalid. Please ensure the API key is correctly set in the environment.");
+      throw new Error("GEMINI_API_KEY is not configured or invalid. Please set a valid key in Vercel Environment Variables.");
     }
     aiInstance = new GoogleGenAI({ apiKey });
   }
@@ -24,22 +23,6 @@ function getAI() {
  * Maps PubMed journal strings to our internal JournalName type.
  */
 export async function fetchLatestResearch(journal?: JournalName, customRange?: { start: Date, end: Date }): Promise<Paper[]> {
-  // If it's the default request (no specific journal, no custom range), use the server-side daily cache
-  if (!journal && !customRange) {
-    try {
-      const url = `/api/research/latest`;
-      const response = await fetch(url);
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Server error: ${response.statusText}`);
-      }
-      return await response.json();
-    } catch (error: any) {
-      console.error("Failed to fetch daily research from server:", error);
-      // Fallback to client-side if server fails
-    }
-  }
-
   const rangeSuffix = customRange 
     ? `${customRange.start.toISOString().split('T')[0]}_${customRange.end.toISOString().split('T')[0]}`
     : 'default';
@@ -174,7 +157,7 @@ Structure the response with high-impact professional formatting:
     let response;
     try {
         response = await ai.models.generateContent({
-            model: 'gemini-3.1-pro-preview',
+            model: 'gemini-3-pro-preview',
             contents: prompt,
             config: {
                 thinkingConfig: { thinkingBudget: 4000 }
