@@ -143,9 +143,9 @@ export async function esearchPMIDsByEDAT(journal?: string, days = 30, retmax = 2
     start.setDate(end.getDate() - days);
   }
   
-  // Use [dp] (Date of Publication) for more reliable results across journals
+  // Use [edat] (Entrez Date) for the most recent additions to PubMed
   // Exclude Letters to focus on original research and reviews
-  const term = `${buildJournalQuery(journal)} AND ("${ymd(start)}"[dp] : "${ymd(end)}"[dp]) NOT "Letter"[pt]`;
+  const term = `${buildJournalQuery(journal)} AND ("${ymd(start)}"[edat] : "${ymd(end)}"[edat]) NOT "Letter"[pt]`;
 
   console.log(`PubMed Search Term: ${term}`);
 
@@ -153,7 +153,7 @@ export async function esearchPMIDsByEDAT(journal?: string, days = 30, retmax = 2
     db: "pubmed",
     retmode: "json",
     retmax: String(retmax),
-    sort: "pub+date",
+    sort: "most+recent",
     term,
   });
   const url = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?${params.toString()}`;

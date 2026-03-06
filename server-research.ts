@@ -86,12 +86,12 @@ export async function fetchAndProcessResearch(apiKey: string) {
   const start = new Date();
   start.setDate(end.getDate() - 7); // Last 7 days
   
-  const term = `${buildJournalQuery()} AND ("${ymd(start)}"[dp] : "${ymd(end)}"[dp]) NOT "Letter"[pt]`;
+  const term = `${buildJournalQuery()} AND ("${ymd(start)}"[edat] : "${ymd(end)}"[edat]) NOT "Letter"[pt]`;
   const searchParams = new URLSearchParams({
     db: "pubmed",
     retmode: "json",
     retmax: "30",
-    sort: "pub+date",
+    sort: "most+recent",
     term,
   });
 

@@ -26,8 +26,8 @@ export async function fetchLatestResearch(journal?: JournalName, customRange?: {
   const rangeSuffix = customRange 
     ? `${customRange.start.toISOString().split('T')[0]}_${customRange.end.toISOString().split('T')[0]}`
     : 'default';
-  const cacheKey = `research_cache_v7_${journal || 'all'}_${rangeSuffix}`;
-  const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+  const cacheKey = `research_cache_v8_${journal || 'all'}_${rangeSuffix}`;
+  const CACHE_DURATION = 4 * 60 * 60 * 1000; // 4 hours
 
   try {
     // 0. Check Cache
